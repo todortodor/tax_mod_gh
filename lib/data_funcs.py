@@ -413,7 +413,7 @@ def write_solution_csv(results,
     run_path = b.year+'_'+str(dir_num)+'/'+str(highest_existing_run_number+1)+'_results.csv'
         
     if 'specific' in p.tax_type:       
-        tax_scheme_path = b.year+'_'+str(dir_num)+'/'+str(highest_existing_run_number)+'_tax_scheme.csv'
+        tax_scheme_path = results_path+run_path[:-4]+'_tax_scheme.csv'
         p.num_scale_back_carb_cost().carb_cost_df.to_csv(results_path+tax_scheme_path)
     else:
         tax_scheme_path = None

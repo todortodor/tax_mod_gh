@@ -183,8 +183,9 @@ class sol:
                   compute_sols = True,
                   compute_hats = False,
                   return_not_found_cases=False,
-                  drop_duplicate_runs = False):
-        
+                  drop_duplicate_runs = False,
+                  keep = 'first'):
+
         if isinstance(dir_num,int):
             dir_num = [dir_num]
         if isinstance(years,int):
@@ -194,7 +195,7 @@ class sol:
             assert compute_sols, "can't compute hats without computing the solution"
         
         relevant_runs, found_cases, not_found_cases = find_runs(cases,results_path,dir_num,years
-                                                                ,drop_duplicate_runs = drop_duplicate_runs)      
+                                                                ,drop_duplicate_runs = drop_duplicate_runs,keep=keep)
         
         assert len(relevant_runs) > 0, "No runs found"
         
@@ -282,8 +283,12 @@ def look_for_cas_in_runs(cas,runs,results_path):
         
     if cas['specific_taxing'] is not None:
         condition = pd.Series([False]*len(runs))
+        count = 0
         for i,run in runs.iterrows():
-            if run['specific_taxing'] is not None:
-                condition.iloc[i] = cas['specific_taxing'].equals(pd.read_csv(results_path+run.path_tax_scheme))
+            # print(run)
+            if 'specific' in run['tax_type']:
+                # print(cas['specific_taxing'])
+                # print(pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]))
+                condition.iloc[i] = cas['specific_taxing'].equals(pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]))
     
     return condition
