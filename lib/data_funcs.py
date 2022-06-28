@@ -242,20 +242,36 @@ class params:
                 data = np.ones(self.country_number * self.sector_number)*carb_cost
                 )
             tax_type = 'uniform'
-            
-            if taxed_countries is not None:
+            #!!!!
+            # if taxed_countries is not None:
+            #     non_taxed_countries = [c for c in self.country_list if c not in taxed_countries]
+            #     self.carb_cost_df.loc[
+            #         (non_taxed_countries,self.sector_list),'value'
+            #         ] = 0
+            #     tax_type = tax_type+'_countries'
+            try:
                 non_taxed_countries = [c for c in self.country_list if c not in taxed_countries]
                 self.carb_cost_df.loc[
                     (non_taxed_countries,self.sector_list),'value'
                     ] = 0
                 tax_type = tax_type+'_countries'
+            except:
+                pass
                         
-            if taxed_sectors is not None:
+            # if taxed_sectors is not None:
+            #     non_taxed_sectors = [s for s in self.sector_list if s not in taxed_sectors]
+            #     self.carb_cost_df.loc[
+            #         (self.country_list,non_taxed_sectors),'value'
+            #         ] = 0
+            #     tax_type = tax_type+'_sectors'
+            try:
                 non_taxed_sectors = [s for s in self.sector_list if s not in taxed_sectors]
                 self.carb_cost_df.loc[
                     (self.country_list,non_taxed_sectors),'value'
                     ] = 0
                 tax_type = tax_type+'_sectors'
+            except:
+                pass
         
         if specific_taxing is not None:
             self.carb_cost = None

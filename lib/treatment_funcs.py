@@ -232,10 +232,12 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
             years[i] = str(y)
         
     runs = pd.concat(
+        # [pd.read_csv(dir_path(results_path,y,d_num)+'/runs.csv' ,
+        #              index_col=0, 
+        #              keep_default_na=False,
+        #              ).replace('',None)
         [pd.read_csv(dir_path(results_path,y,d_num)+'/runs.csv' ,
-                     index_col=0, 
-                     keep_default_na=False,
-                     ).replace('',None)
+                     index_col=0)
          for y,d_num in itertools.product(years,dir_num)]
         )
     not_found_cases = []
@@ -265,7 +267,8 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
 def look_for_cas_in_runs(cas,runs,results_path):
         
     if cas['specific_taxing'] is None:
-        condition1 = pd.Series(np.isclose(runs['carb_cost'], cas['carb_cost']))
+        print(cas['carb_cost'])
+        condition1 = pd.Series(np.isclose(runs['carb_cost'].fillna(1e12), cas['carb_cost']))
         
         if cas['taxed_countries'] is None:
             condition2 = runs['taxed_countries'].isna()
@@ -283,12 +286,8 @@ def look_for_cas_in_runs(cas,runs,results_path):
         
     if cas['specific_taxing'] is not None:
         condition = pd.Series([False]*len(runs))
-        count = 0
         for i,run in runs.iterrows():
-            # print(run)
             if 'specific' in run['tax_type']:
-                # print(cas['specific_taxing'])
-                # print(pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]))
-                condition.iloc[i] = cas['specific_taxing'].equals(pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]))
-    
+                condition.iloc[i] = all(np.isclose(cas['specific_taxing'].value.values,
+                                    pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]).value.values))
     return condition
