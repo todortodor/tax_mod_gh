@@ -256,7 +256,7 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
     
     if drop_duplicate_runs:
         relevant_runs.drop_duplicates(['year', 'carb_cost', 'tax_type', 'taxed_countries', 
-                                       'taxed_sectors','fair_tax', 'sigma', 'eta'],
+                                       'taxed_sectors','fair_tax', 'sigma', 'eta', 'path_tax_scheme'],
                                       inplace=True,
                                       keep = keep)
     

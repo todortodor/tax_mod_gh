@@ -8,7 +8,7 @@ Created on Wed May 25 08:07:29 2022
 
 import sys
 main_path = ("../")
-# sys.path.append(main_path+"lib/")
+sys.path.append(main_path+"lib/")
 import py4nets_funcs as py4nets
 data_path = main_path+"data/"
 results_path = main_path+"results/"
@@ -17,8 +17,8 @@ import treatment_funcs as t
 dir_num = 1
 
 y=2018 #year
-carb_cost = 1e-2 #carbon tax in million dollars by ton of CO2
-taxed_countries = ['CHN']
+carb_cost = 1e-4 #carbon tax in million dollars by ton of CO2
+taxed_countries = None
 taxed_sectors = None
 specific_taxing = None
 fair_tax = False
@@ -38,7 +38,7 @@ relevant_runs,found_cases,not_found_cases = t.find_runs(simulation_case,
                                                         dir_num,
                                                         y,
                                                         drop_duplicate_runs = True,
-                                                        keep='last')
+                                                        keep='first')
 sol = t.sol(relevant_runs.squeeze(), results_path).compute_solution(baseline)
 
 nodes_unpivoted, edges_unpivoted, nodes_total, edges_total, world = \
@@ -138,7 +138,10 @@ If 'input':
 
 #%% export as an image
 
-path = main_path+'graph_images/'
-height = 4000
-width = 8000
-py4nets.export_as_image(path,height,width)
+# path = main_path+'graph_images/'
+# height = 4000
+# width = 8000
+# py4nets.export_as_image(path,height,width)
+# %% Tests for comparison
+nodes_total.to_csv('/Users/malemo/Dropbox/UZH/Green Logistics/Global Sustainability Index/nodes_tax_model_new.csv')
+edges_total.to_csv('/Users/malemo/Dropbox/UZH/Green Logistics/Global Sustainability Index/edges_tax_model_new.csv')
