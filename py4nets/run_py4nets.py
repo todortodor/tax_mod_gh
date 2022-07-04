@@ -142,6 +142,3 @@ If 'input':
 # height = 4000
 # width = 8000
 # py4nets.export_as_image(path,height,width)
-# %% Tests for comparison
-nodes_total.to_csv('/Users/malemo/Dropbox/UZH/Green Logistics/Global Sustainability Index/nodes_tax_model_new.csv')
-edges_total.to_csv('/Users/malemo/Dropbox/UZH/Green Logistics/Global Sustainability Index/edges_tax_model_new.csv')
