@@ -35,6 +35,25 @@ def get_sector_list():
                    '77T82', '84', '85', '86T88', '90T93', '94T98']
     return sector_list
 
+def countries_from_fta(fta = None):
+    fta_dict = {
+     'EU':['AUT', 'BEL', 'BGR','CYP', 'CZE', 'DEU','DNK', 'ESP', 'EST', 'FIN',
+           'FRA','GRC','HUN','IRL','ITA','LTU','LVA','MLT','NLD',
+           'POL','PRT','ROU','SVK','SVN','SWE'],
+     'NAFTA':['CAN','MEX','USA'],
+     'ASEAN':['BRN', 'IDN', 'KHM', 'LAO', 'MMR', 'PHL', 'SGP', 'THA', 'VNM'],
+     'AANZFTA':['AUS', 'BRN', 'IDN', 'KHM', 'LAO', 'MMR', 'NZL', 'PHL', 'SGP', 'THA', 'VNM'],
+     'APTA':['CHN','IND','KOR','LAO'],
+     'EEA':['AUT', 'BEL', 'BGR', 'CHE', 'CYP', 'CZE', 'DEU','DNK', 'ESP', 'EST', 'FIN',
+            'FRA','GRC','HRV','HUN','IRL','ISL','ITA','LTU','LVA','MLT','NLD',
+            'NOR','POL','PRT','ROU','SVK','SVN','SWE'],
+     'MERCOSUR':['ARG','BRA','CHL','COL','PER']}
+    if fta is None:
+        print(fta_dict)
+        return fta_dict
+    else:
+        return fta_dict[fta]
+
 class baseline:
     def __init__(self,year,data_path):
         t1 = perf_counter()
@@ -222,6 +241,7 @@ class params:
                  sigma,
                  carb_cost = None,  
                  taxed_countries = None, 
+                 taxing_countries = None, 
                  taxed_sectors = None,
                  specific_taxing = None,
                  fair_tax = False):
@@ -229,6 +249,7 @@ class params:
         self.eta = eta
         self.taxed_sectors = taxed_sectors
         self.taxed_countries = taxed_countries
+        self.taxing_countries = taxing_countries
         self.specific_taxing = specific_taxing
         self.fair_tax = fair_tax
         self.carb_cost = carb_cost
@@ -236,13 +257,13 @@ class params:
         if specific_taxing is None:
             self.carb_cost_df = pd.DataFrame(
                 index = pd.MultiIndex.from_product(
-                    [self.country_list,self.sector_list], 
-                    names = ['country','sector']),
+                    [self.country_list,self.sector_list,self.country_list], 
+                    names = ['row_country','sector','col_country']),
                 columns = ['value'],
-                data = np.ones(self.country_number * self.sector_number)*carb_cost
+                data = np.ones(self.country_number * self.sector_number * self.country_number)*carb_cost
                 )
             tax_type = 'uniform'
-            #!!!!
+            
             # if taxed_countries is not None:
             #     non_taxed_countries = [c for c in self.country_list if c not in taxed_countries]
             #     self.carb_cost_df.loc[
@@ -252,9 +273,18 @@ class params:
             try:
                 non_taxed_countries = [c for c in self.country_list if c not in taxed_countries]
                 self.carb_cost_df.loc[
-                    (non_taxed_countries,self.sector_list),'value'
+                    (non_taxed_countries,self.sector_list,self.country_list),'value'
                     ] = 0
-                tax_type = tax_type+'_countries'
+                tax_type = tax_type+'_taxed_countries'
+            except:
+                pass
+            
+            try:
+                non_taxing_countries = [c for c in self.country_list if c not in taxing_countries]
+                self.carb_cost_df.loc[
+                    (self.country_list,self.sector_list,non_taxing_countries),'value'
+                    ] = 0
+                tax_type = tax_type+'_taxing_countries'
             except:
                 pass
                         
@@ -267,7 +297,7 @@ class params:
             try:
                 non_taxed_sectors = [s for s in self.sector_list if s not in taxed_sectors]
                 self.carb_cost_df.loc[
-                    (self.country_list,non_taxed_sectors),'value'
+                    (self.country_list,non_taxed_sectors,self.country_list),'value'
                     ] = 0
                 tax_type = tax_type+'_sectors'
             except:
@@ -276,13 +306,15 @@ class params:
         if specific_taxing is not None:
             self.carb_cost = None
             self.taxed_countries = None
+            self.taxing_countries = None
             self.taxed_sectors = None
             self.carb_cost_df = specific_taxing
             self.carb_cost_df.sort_index(inplace = True)
             self.carb_cost_df.index.rename(['country','sector'], inplace = True)
             assert np.all( self.carb_cost_df.index == pd.MultiIndex.from_product(
                 [self.country_list,
-                self.sector_list]) ), "Incorrect taxing input, index isn't correct"
+                self.sector_list,
+                self.country_list]) ), "Incorrect taxing input, index isn't correct"
             
             assert len(self.carb_cost_df.columns) == 1, "Incorrect taxing input, wrong nbr of columns"
             self.carb_cost_df.columns = ['value']
@@ -292,7 +324,8 @@ class params:
             tax_type = tax_type+'_fair'
 
         self.carb_cost_np = self.carb_cost_df.value.values.reshape(self.country_number,
-                                                                   self.sector_number)
+                                                                   self.sector_number,
+                                                                   self.country_number)
         self.num_scaled = False
         self.tax_type = tax_type
 
@@ -350,8 +383,8 @@ class params:
             print('Carbon tax was not scaled by numeraire, did nothing')
     
 
-def build_cases(carb_cost_list,taxed_countries_list,taxed_sectors_list,
-                specific_taxing_list,fair_tax_list):
+def build_cases(carb_cost_list,taxed_countries_list, taxing_countries_list,
+                taxed_sectors_list, specific_taxing_list,fair_tax_list):
     # if not isinstance(carb_cost_list, list):
     #     carb_cost_list = [carb_cost_list]
     # if not isinstance(taxed_countries_list, list):
@@ -369,14 +402,17 @@ def build_cases(carb_cost_list,taxed_countries_list,taxed_sectors_list,
         
     cases = []
     taxed_countries_list = [sorted(t) if t is not None else None for t in taxed_countries_list]
+    taxing_countries_list = [sorted(t) if t is not None else None for t in taxing_countries_list]
     taxed_sectors_list = [sorted(t) if t is not None else None for t in taxed_sectors_list]
-    for carb_cost,taxed_countries,taxed_sectors,specific_taxing,fair_tax \
-        in itertools.product(carb_cost_list,taxed_countries_list,taxed_sectors_list,specific_taxing_list,fair_tax_list): 
+    for carb_cost,taxed_countries,taxing_countries,taxed_sectors,specific_taxing,fair_tax \
+        in itertools.product(carb_cost_list,taxed_countries_list,taxing_countries_list,
+                             taxed_sectors_list,specific_taxing_list,fair_tax_list): 
             assert carb_cost is None or specific_taxing is None, 'carb_cost and specific taxing are mutually exclusive parameters'
             assert carb_cost is not None or specific_taxing is not None, 'carb_cost or specific taxing need to be specified'
             
             cases.append({'carb_cost':carb_cost,
                       'taxed_countries': taxed_countries,
+                      'taxing_countries': taxing_countries,
                       'taxed_sectors':taxed_sectors,
                       'specific_taxing':specific_taxing,
                       'fair_tax':fair_tax})
@@ -405,6 +441,7 @@ def write_solution_csv(results,
                                         'carb_cost',
                                         'tax_type',
                                         'taxed_countries',
+                                        'taxing_countries',
                                         'taxed_sectors',
                                         'fair_tax',
                                         'sigma',
@@ -444,6 +481,7 @@ def write_solution_csv(results,
                     p.num_scale_back_carb_cost().carb_cost,
                     p.tax_type,
                     p.taxed_countries,
+                    p.taxing_countries,
                     p.taxed_sectors,
                     p.fair_tax,
                     p.sigma,

@@ -11,14 +11,16 @@ def cons_eq_unit(price, params, baseline):
     p = params
     b = baseline
     
-    taxed_price = price*(1+p.carb_cost_np*b.co2_intensity_np)
+    taxed_price = np.einsum('it,itj->itj',
+                            price,
+                            (1+p.carb_cost_np*b.co2_intensity_np[:,:,None]))
     
-    price_agg_no_pow = np.einsum('it,itj->tj'
+    price_agg_no_pow = np.einsum('itj,itj->tj'
                           ,taxed_price**(1-p.sigma) 
                           ,b.share_cons_o_np 
                           )
     
-    Q = np.einsum('tj,it -> itj' , 
+    Q = np.einsum('tj,itj -> itj' , 
                   np.divide(1, 
                             price_agg_no_pow , 
                             out = np.ones_like(price_agg_no_pow), 
@@ -30,14 +32,16 @@ def iot_eq_unit(price, params, baseline):
     p = params
     b = baseline
     
-    taxed_price = price*(1+p.carb_cost_np*b.co2_intensity_np)
+    taxed_price = np.einsum('it,itj->itj',
+                            price,
+                            (1+p.carb_cost_np*b.co2_intensity_np[:,:,None]))
     
-    price_agg_no_pow = np.einsum('it,itjs->tjs'
+    price_agg_no_pow = np.einsum('itj,itjs->tjs'
                           ,taxed_price**(1-p.eta) 
                           ,b.share_cs_o_np 
                           )
     
-    M = np.einsum('tjs,it -> itjs' , 
+    M = np.einsum('tjs,itj -> itjs' , 
                   np.divide(1, 
                             price_agg_no_pow , 
                             out = np.ones_like(price_agg_no_pow), 
@@ -52,17 +56,18 @@ def compute_I_hat(p_hat, E_hat, params, baseline):
     iot_hat_unit = iot_eq_unit(p_hat, params, baseline) 
     cons_hat_unit = cons_eq_unit(p_hat, params, baseline)
     
-    A = b.va_np + np.einsum('it,itjs,itjs->js' , 
-                          p_hat*p.carb_cost_np*b.co2_intensity_np,
+    A = b.va_np + np.einsum('it,itj,itjs,itjs->js' , 
+                          p_hat,
+                          p.carb_cost_np*b.co2_intensity_np[:,:,None],
                           iot_hat_unit,
                           b.iot_np)  
 
-    K = b.cons_tot_np - np.einsum( 'it,it,itj,itj -> j', 
+    K = b.cons_tot_np - np.einsum( 'it,itj,itj,itj -> j', 
                                               p_hat, 
-                                              p.carb_cost_np*b.co2_intensity_np , 
+                                              p.carb_cost_np*b.co2_intensity_np[:,:,None], 
                                               cons_hat_unit , 
                                               b.cons_np )       
-    I_hat = np.einsum('js,js->j' , E_hat , A) / K
+    I_hat = (np.einsum('js,js->j' , E_hat , A) + b.deficit_np) / K
     return I_hat
 
 def solve_p(E, params, baseline):
@@ -79,8 +84,10 @@ def solve_p(E, params, baseline):
     
     while np.linalg.norm(price_new - price_old)/np.linalg.norm(price_new) > tol_p:        
         price_old = (p_step * price_new + (1-p_step) * price_old)       
-        taxed_price = price_old*(1+p.carb_cost_np*b.co2_intensity_np)        
-        price_agg_no_pow = np.einsum('it,itjs->tjs'
+        taxed_price = np.einsum('it,itj->itj',
+                                price_old,
+                                (1+p.carb_cost_np*b.co2_intensity_np[:,:,None]))        
+        price_agg_no_pow = np.einsum('itj,itjs->tjs'
                                   ,taxed_price**(1-p.eta) 
                                   ,b.share_cs_o_np 
                                   )       
@@ -122,18 +129,20 @@ def solve_E(params, baseline):
         
         cons_hat_unit = cons_eq_unit(price, params, baseline)    
            
-        A = b.va_np + np.einsum('it,itjs,itjs->js' , 
-                              price*p.carb_cost_np*b.co2_intensity_np,
+        A = b.va_np + np.einsum('it,itj,itjs,itjs->js' , 
+                              price,
+                              p.carb_cost_np*b.co2_intensity_np[:,:,None],
                               iot_hat_unit,
-                              b.iot_np)    
+                              b.iot_np)  
         B = np.einsum('itj,itj->itj',
                       cons_hat_unit,
                       b.cons_np)    
-        K = b.cons_tot_np - np.einsum( 'it,it,itj,itj -> j', 
+
+        K = b.cons_tot_np - np.einsum( 'it,itj,itj,itj -> j', 
                                                   price, 
-                                                  p.carb_cost_np*b.co2_intensity_np , 
+                                                  p.carb_cost_np*b.co2_intensity_np[:,:,None], 
                                                   cons_hat_unit , 
-                                                  b.cons_np )    
+                                                  b.cons_np )
         Z = np.einsum('itjs,itjs->itjs',
                       iot_hat_unit,
                       b.iot_np)        
@@ -203,8 +212,10 @@ def solve_fair_tax(params, baseline):
         iot_hat_unit = iot_eq_unit(p_hat_sol, p, b) 
         cons_hat_unit = cons_eq_unit(p_hat_sol, p, b)       
         beta = np.einsum('itj->tj',b.cons_np) / np.einsum('itj->j',b.cons_np)
-        taxed_price = p_hat_sol*(1+p.carb_cost_np*b.co2_intensity_np) 
-        price_agg_no_pow = np.einsum('it,itj->tj'
+        taxed_price = np.einsum('it,itj->itj',
+                                p_hat_sol,
+                                (1+p.carb_cost_np*b.co2_intensity_np[:,:,None]))
+        price_agg_no_pow = np.einsum('itj,itj->tj'
                                   ,taxed_price**(1-p.sigma) 
                                   ,b.share_cons_o_np 
                                   )       
@@ -216,8 +227,8 @@ def solve_fair_tax(params, baseline):
         cons_new = np.einsum('it,j,itj,itj -> itj', p_hat_sol, I_hat_sol , cons_hat_unit , b.cons_np)
         va_new = E_hat_sol * b.va_np
         G = np.einsum('js->j',va_new) \
-            + np.einsum('it,itjs->j',p.carb_cost_np*b.co2_intensity_np ,iot_new) \
-            + np.einsum('it,itj->j',p.carb_cost_np*b.co2_intensity_np ,cons_new) \
+            + np.einsum('itj,itjs->j',p.carb_cost_np*b.co2_intensity_np[:,:,None] ,iot_new) \
+            + np.einsum('itj,itj->j',p.carb_cost_np*b.co2_intensity_np[:,:,None] ,cons_new) \
             + b.deficit_np
 
         T_new = (H*G.sum()/H.sum()-G)

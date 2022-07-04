@@ -22,16 +22,17 @@ sigma = 4
 numeraire_type = 'wage'
 numeraire_country = 'USA'
 
-carb_cost_list = [1e-2]
-taxed_countries_list = [None, ['CHN']]
+carb_cost_list = [c/1e6 for c in range(200)]+[c/1e6 for c in range(200,1000,10)]
+taxed_countries_list = [None]
+taxing_countries_list = [None]
 taxed_sectors_list = [None]
 specific_taxing_list = [None]
 fair_tax_list = [False]
 
-cases = d.build_cases(carb_cost_list,taxed_countries_list,taxed_sectors_list,
-                specific_taxing_list,fair_tax_list)
+cases = d.build_cases(carb_cost_list,taxed_countries_list,taxing_countries_list,
+                      taxed_sectors_list,specific_taxing_list,fair_tax_list)
 
-years = [y for y in range(2018,2019)]
+years = [y for y in range(2018,1994,-1)]
 
 for y in years:
     

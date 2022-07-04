@@ -344,12 +344,12 @@ def load_baseline_compute_initial(sol, baseline, data_path, final_or_inter_or_to
         tot = baseline_iot
         tot['new'] = iot['value']
         traded = tot[tot['row_country'] != tot['col_country']]#.set_index(['row_country', 'row_sector', 'col_country','col_sector'])
-        
+    
     world = load_world_data(data_path)
     nodes_unpivoted, edges_unpivoted, nodes_total, edges_total = \
         compute_nodes_and_edges_baseline(traded, tot, sol, data_path, world)
         
-    return nodes_unpivoted, edges_unpivoted, nodes_total, edges_total, world
+    return nodes_unpivoted, edges_unpivoted, nodes_total, edges_total, world, traded
     
 #%% create and apply mapping
         
