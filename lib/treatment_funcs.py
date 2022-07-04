@@ -82,14 +82,12 @@ class sol:
         cons_hat_unit = s.cons_eq_unit(p_hat_sol, p, b)       
         beta = np.einsum('itj->tj',b.cons_np) / np.einsum('itj->j',b.cons_np)
         
-        taxed_price = np.einsum('it,itj->itj',
-                                p_hat_sol,
-                                (1+p.carb_cost_np*b.co2_intensity_np[:,:,None]))      
-        consumer_price_agg = np.einsum('itj,itj->tj'
+        taxed_price = p_hat_sol*(1+p.carb_cost_np*b.co2_intensity_np)      
+        consumer_price_agg = np.einsum('it,itj->tj'
                                   ,taxed_price**(1-p.sigma) 
                                   ,b.share_cons_o_np 
                                   ) ** (1/(1 - p.sigma))
-        price_agg_no_pow = np.einsum('itj,itjs->tjs'
+        price_agg_no_pow = np.einsum('it,itjs->tjs'
                                   ,taxed_price**(1-p.eta) 
                                   ,b.share_cs_o_np 
                                   )       
@@ -140,8 +138,8 @@ class sol:
                                     data = p_hat_sol.ravel(),
                                     columns = ['hat']).reset_index()
         frame.taxed_price = pd.DataFrame(index = pd.MultiIndex.from_product(
-                                                        [b.country_list,b.sector_list,b.country_list],
-                                                        names = ['row_country','row_sector','col_country']), 
+                                                        [b.country_list,b.sector_list],
+                                                        names = ['row_country','row_sector']), 
                                     data = taxed_price.ravel(),
                                     columns = ['hat']).reset_index()
         frame.consumer_price_agg = pd.DataFrame(index = pd.MultiIndex.from_product(
@@ -258,7 +256,7 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
     
     if drop_duplicate_runs:
         relevant_runs.drop_duplicates(['year', 'carb_cost', 'tax_type', 'taxed_countries', 
-                                       'taxing_countries','taxed_sectors','fair_tax', 'sigma', 'eta'],
+                                       'taxed_sectors','fair_tax', 'sigma', 'eta', 'path_tax_scheme'],
                                       inplace=True,
                                       keep = keep)
     
@@ -277,24 +275,19 @@ def look_for_cas_in_runs(cas,runs,results_path):
         else:
             condition2 = (runs['taxed_countries'] == str(sorted(cas['taxed_countries'])))
             
-        if cas['taxing_countries'] is None:
-            condition3 = runs['taxing_countries'].isna()
-        else:
-            condition3 = (runs['taxing_countries'] == str(sorted(cas['taxing_countries'])))
-            
         if cas['taxed_sectors'] is None:
-            condition4 = runs['taxed_sectors'].isna()
+            condition3 = runs['taxed_sectors'].isna()
         else:
-            condition4 = (runs['taxed_sectors'] == str(sorted(cas['taxed_sectors'])))
+            condition3 = (runs['taxed_sectors'] == str(sorted(cas['taxed_sectors'])))
         
-        condition5 = (runs['fair_tax'] == cas['fair_tax'])
+        condition4 = (runs['fair_tax'] == cas['fair_tax'])
         
-        condition = condition1 & condition2 & condition3 & condition4 & condition5
+        condition = condition1 & condition2 & condition3 & condition4
         
     if cas['specific_taxing'] is not None:
         condition = pd.Series([False]*len(runs))
         for i,run in runs.iterrows():
             if 'specific' in run['tax_type']:
-                condition.iloc[i] = np.allclose(cas['specific_taxing'].value.values,
-                                    pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]).value.values)
+                condition.iloc[i] = all(np.isclose(cas['specific_taxing'].value.values,
+                                    pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]).value.values))
     return condition
