@@ -7,24 +7,27 @@ Created on Wed May 25 08:07:29 2022
 """
 
 import sys
-main_path = ("../")
+main_path = ("/Users/simonl/Dropbox/Mac/Documents/taff/tax_mod/")
 sys.path.append(main_path+"lib/")
+sys.path.append(main_path+"py4nets/")
 import py4nets_funcs as py4nets
 data_path = main_path+"data/"
 results_path = main_path+"results/"
 import data_funcs as d
 import treatment_funcs as t
-dir_num = 1
+dir_num = 2
 
 y=2018 #year
 carb_cost = 1e-4 #carbon tax in million dollars by ton of CO2
-taxed_countries = None
+taxed_countries = ['CHN']
+taxing_countries = ['USA']
 taxed_sectors = None
 specific_taxing = None
 fair_tax = False
 
 simulation_case = {'carb_cost':carb_cost,
                     'taxed_countries': taxed_countries,
+                    'taxing_countries': taxing_countries,
                     'taxed_sectors':taxed_sectors,
                     'specific_taxing':specific_taxing,
                     'fair_tax':fair_tax}
@@ -38,17 +41,17 @@ relevant_runs,found_cases,not_found_cases = t.find_runs(simulation_case,
                                                         dir_num,
                                                         y,
                                                         drop_duplicate_runs = True,
-                                                        keep='first')
+                                                        keep='last')
 sol = t.sol(relevant_runs.squeeze(), results_path).compute_solution(baseline)
 
-nodes_unpivoted, edges_unpivoted, nodes_total, edges_total, world = \
+nodes_unpivoted, edges_unpivoted, nodes_total, edges_total, world, traded = \
     py4nets.load_baseline_compute_initial(sol, baseline, data_path, final_or_inter_or_total)
 
 #%% build and display the network
 
 sector = 'Total' #'a sector' (see list) or 'Total'
 country = None #'a country' (see list) or None to build the whole network
-input_or_output = 'output' #'input' or 'output'
+input_or_output = 'input' #'input' or 'output'
 nominal_values_or_shares = 'values' #'values' or 'shares'
 write_title_in_antartica = False #True or False
 
@@ -138,7 +141,7 @@ If 'input':
 
 #%% export as an image
 
-# path = main_path+'graph_images/'
-# height = 4000
-# width = 8000
-# py4nets.export_as_image(path,height,width)
+path = main_path+'graph_images/'
+height = 4000
+width = 8000
+py4nets.export_as_image(path,height,width)

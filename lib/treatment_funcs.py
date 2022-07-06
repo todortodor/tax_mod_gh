@@ -35,7 +35,7 @@ class sol:
             self.params = d.params(eta =run.eta,
                                    sigma = run.sigma,
                                    specific_taxing = pd.read_csv(self.results_path+run.path_tax_scheme, 
-                                                                 index_col=['country','sector']),
+                                                                 index_col=['row_country','row_sector','col_country']),
                                    fair_tax = run.fair_tax)
             
         if 'specific' not in run.tax_type:
@@ -207,7 +207,7 @@ class sol:
         sols = []
         for idx,run in relevant_runs.iterrows():
             sols.append(sol(run, results_path))
-            
+          
         if compute_sols:
             sols = [s.compute_solution(baselines[s.run.year]) for s in tqdm(sols)]
             
@@ -226,7 +226,7 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
         years = [years]
     if isinstance(cases,dict):
         cases = [cases]
-        
+    
     for i,y in enumerate(years):
         if isinstance(y,int):
             years[i] = str(y)
@@ -240,6 +240,7 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
                      index_col=0)
          for y,d_num in itertools.product(years,dir_num)]
         )
+    
     not_found_cases = []
     found_cases = []
     relevant_runs = []
@@ -255,7 +256,7 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
     relevant_runs = pd.concat(relevant_runs)
     
     if drop_duplicate_runs:
-        relevant_runs.drop_duplicates(['year', 'carb_cost', 'tax_type', 'taxed_countries', 
+        relevant_runs.drop_duplicates(['year', 'carb_cost', 'tax_type', 'taxed_countries','taxing_countries', 
                                        'taxed_sectors','fair_tax', 'sigma', 'eta', 'path_tax_scheme'],
                                       inplace=True,
                                       keep = keep)
@@ -267,27 +268,31 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
 def look_for_cas_in_runs(cas,runs,results_path):
         
     if cas['specific_taxing'] is None:
-        print(cas['carb_cost'])
         condition1 = pd.Series(np.isclose(runs['carb_cost'].fillna(1e12), cas['carb_cost']))
         
         if cas['taxed_countries'] is None:
             condition2 = runs['taxed_countries'].isna()
         else:
             condition2 = (runs['taxed_countries'] == str(sorted(cas['taxed_countries'])))
+              
+        if cas['taxing_countries'] is None:
+            condition3 = runs['taxing_countries'].isna()
+        else:
+            condition3 = (runs['taxing_countries'] == str(sorted(cas['taxing_countries'])))
             
         if cas['taxed_sectors'] is None:
-            condition3 = runs['taxed_sectors'].isna()
+            condition4 = runs['taxed_sectors'].isna()
         else:
-            condition3 = (runs['taxed_sectors'] == str(sorted(cas['taxed_sectors'])))
+            condition4 = (runs['taxed_sectors'] == str(sorted(cas['taxed_sectors'])))
         
-        condition4 = (runs['fair_tax'] == cas['fair_tax'])
+        condition5 = (runs['fair_tax'] == cas['fair_tax'])
         
-        condition = condition1 & condition2 & condition3 & condition4
+        condition = condition1 & condition2 & condition3 & condition4 & condition5
         
     if cas['specific_taxing'] is not None:
         condition = pd.Series([False]*len(runs))
         for i,run in runs.iterrows():
             if 'specific' in run['tax_type']:
                 condition.iloc[i] = all(np.isclose(cas['specific_taxing'].value.values,
-                                    pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1]).value.values))
+                                    pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1,2]).value.values))
     return condition

@@ -35,7 +35,7 @@ def get_sector_list():
                    '77T82', '84', '85', '86T88', '90T93', '94T98']
     return sector_list
 
-def countries_from_fta(fta = None):
+def countries_from_fta(fta = None, return_dict = False):
     fta_dict = {
      'EU':['AUT', 'BEL', 'BGR','CYP', 'CZE', 'DEU','DNK', 'ESP', 'EST', 'FIN',
            'FRA','GRC','HUN','IRL','ITA','LTU','LVA','MLT','NLD',
@@ -49,10 +49,37 @@ def countries_from_fta(fta = None):
             'NOR','POL','PRT','ROU','SVK','SVN','SWE'],
      'MERCOSUR':['ARG','BRA','CHL','COL','PER']}
     if fta is None:
-        print(fta_dict)
-        return fta_dict
+        if not return_dict:
+            for key,item in fta_dict.items():
+                print(key)
+                print(item)
+        if return_dict:
+            return fta_dict
     else:
         return fta_dict[fta]
+
+def fta_from_countries(countries):
+    try:
+        countries = eval(countries)
+    except:
+        pass
+    
+    if type(countries) is not list:
+        return countries
+    
+    else:
+        fta_dict = countries_from_fta(return_dict=True)
+        fta_dict = dict(sorted(fta_dict.items(), key= lambda x: len(x[1]), reverse=True))
+        
+        out_countries = set(countries)
+        out_ftas = []
+        for fta in fta_dict:
+            if set(fta_dict[fta]).issubset(set(countries)):
+                if not any([set(fta_dict[fta]).issubset(set(fta_dict[f])) for f in out_ftas]):
+                    out_ftas.append(fta)
+                    out_countries = out_countries-set(fta_dict[fta])
+        
+        return sorted(out_ftas)+sorted(list(out_countries))
 
 class baseline:
     def __init__(self,year,data_path):
@@ -310,7 +337,7 @@ class params:
             self.taxed_sectors = None
             self.carb_cost_df = specific_taxing
             self.carb_cost_df.sort_index(inplace = True)
-            self.carb_cost_df.index.rename(['country','sector'], inplace = True)
+            self.carb_cost_df.index.rename(['row_country','row_sector','col_sector'], inplace = True)
             assert np.all( self.carb_cost_df.index == pd.MultiIndex.from_product(
                 [self.country_list,
                 self.sector_list,
