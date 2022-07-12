@@ -12,8 +12,6 @@ import numpy as np
 import os, sys
 from pathlib import Path
 import itertools
-import csv
-from time import perf_counter
 
 def get_country_list():
     country_list = ['ARG', 'AUS', 'AUT', 'BEL', 'BGR', 'BRA', 'BRN', 'CAN', 
@@ -83,7 +81,6 @@ def fta_from_countries(countries):
 
 class baseline:
     def __init__(self,year,data_path):
-        t1 = perf_counter()
         year = str(year)
         print('Loading baseline data '+year)
         self.path = data_path+'yearly_CSV_agg_treated/datas'+year
@@ -96,39 +93,24 @@ class baseline:
         co2_intensity = pd.read_csv(self.path+'/co2_intensity_prod_with_agri_ind_proc_fug_'+year+'.csv')
         co2_prod = pd.read_csv(self.path+'/prod_CO2_with_agri_agri_ind_proc_fug_'+year+'.csv')
         labor = pd.read_csv(data_path+'/World bank/labor_force/labor.csv')
-        t4=perf_counter()
-        # get sectors/countries lists
-        # self.sector_list = cons['col_sector'].drop_duplicates().to_list()
         self.sector_list = get_sector_list()
         self.sector_number = len(self.sector_list)
-        # self.country_list = cons['col_country'].drop_duplicates().to_list()
         self.country_list = get_country_list()
         self.country_number = len(self.country_list)
-        t5=perf_counter()
-        # set_indexes
-        # self.iot = iot.set_index(
-        #     ['row_country','row_sector','col_country','col_sector']
-        #     )  
         self.iot = iot
-        t3 = perf_counter()
-        self.cons = cons#.set_index(['row_country','row_sector','col_country'])
+        self.cons = cons
         self.output = output.rename(columns={
             'row_country':'country'
-            ,'row_sector':'sector'})#.set_index(['country','sector'])    
-        self.va = va#.set_index(['col_country','col_sector'])
-        self.co2_intensity = co2_intensity#.set_index(['country','sector'])
-        self.co2_prod = co2_prod#.set_index(['country','sector'])
-        self.labor = labor#.set_index('country').sort_index()
-        # self.deficit = self.cons.groupby(level=2).sum() - self.va.groupby(level=0).sum()
+            ,'row_sector':'sector'})
+        self.va = va
+        self.co2_intensity = co2_intensity
+        self.co2_prod = co2_prod
+        self.labor = labor
         self.deficit = (self.cons.groupby(['col_country'])['value'].sum()
             - self.va.groupby(['col_country'])['value'].sum()).reset_index()
         
         self.num_scaled = False
         self.year = year
-        t2 = perf_counter()
-        # print(t4 - t1)
-        # print(t5 - t4)
-        # print(t3 - t5)
         
         
     def elements(self):
@@ -264,16 +246,30 @@ class params:
     sector_number = len(sector_list)
     
     def __init__(self,
-                 eta, 
-                 sigma,
+                 data_path,
+                 eta_path, 
+                 sigma_path,
                  carb_cost = None,  
                  taxed_countries = None, 
                  taxing_countries = None, 
                  taxed_sectors = None,
                  specific_taxing = None,
                  fair_tax = False):
-        self.sigma = sigma
-        self.eta = eta
+        
+        self.eta_path = eta_path
+        eta_df = pd.read_csv(data_path+'elasticities/'+eta_path,index_col=0)
+        assert eta_df.index.to_list() == self.sector_list , "wrong sectors for eta"
+        assert len(eta_df.columns) == 1, "wrong nbr of columns of eta"
+        assert np.all(eta_df.values > 0), "negative or null eta"
+        self.eta = eta_df[eta_df.columns[0]].values
+            
+        self.sigma_path = sigma_path
+        sigma_df = pd.read_csv(data_path+'elasticities/'+sigma_path,index_col=0)
+        assert sigma_df.index.to_list() == self.sector_list , "wrong sectors for sigma"
+        assert len(sigma_df.columns) == 1, "wrong nbr of columns of sigma"
+        assert np.all(sigma_df.values > 0), "negative or null sigma"
+        self.sigma = sigma_df[sigma_df.columns[0]].values
+            
         self.taxed_sectors = taxed_sectors
         self.taxed_countries = taxed_countries
         self.taxing_countries = taxing_countries
@@ -410,34 +406,27 @@ class params:
             print('Carbon tax was not scaled by numeraire, did nothing')
     
 
-def build_cases(carb_cost_list,taxed_countries_list, taxing_countries_list,
+def build_cases(eta_path_list,sigma_path_list,carb_cost_list,taxed_countries_list, taxing_countries_list,
                 taxed_sectors_list, specific_taxing_list,fair_tax_list):
-    # if not isinstance(carb_cost_list, list):
-    #     carb_cost_list = [carb_cost_list]
-    # if not isinstance(taxed_countries_list, list):
-    #     taxed_countries_list = [[taxed_countries_list]]
-    # elif not isinstance(taxed_countries_list[0], list):
-    #     taxed_countries_list = [taxed_countries_list]
-    # if not isinstance(taxed_sectors_list, list):
-    #     taxed_sectors_list = [[taxed_sectors_list]]
-    # elif not isinstance(taxed_sectors_list[0], list):
-    #     taxed_sectors_list = [taxed_sectors_list]
-    # if not isinstance(specific_taxing_list, list):
-    #     specific_taxing_list = [specific_taxing_list]
-    # if not isinstance(fair_tax_list, list):
-    #     fair_tax_list = [fair_tax_list]
         
     cases = []
     taxed_countries_list = [sorted(t) if t is not None else None for t in taxed_countries_list]
     taxing_countries_list = [sorted(t) if t is not None else None for t in taxing_countries_list]
     taxed_sectors_list = [sorted(t) if t is not None else None for t in taxed_sectors_list]
-    for carb_cost,taxed_countries,taxing_countries,taxed_sectors,specific_taxing,fair_tax \
-        in itertools.product(carb_cost_list,taxed_countries_list,taxing_countries_list,
+    if isinstance(eta_path_list,str):
+        eta_path_list = [eta_path_list]
+    if isinstance(sigma_path_list,str):
+        sigma_path_list = [sigma_path_list]
+    
+    for eta_path,sigma_path,carb_cost,taxed_countries,taxing_countries,taxed_sectors,specific_taxing,fair_tax \
+        in itertools.product(eta_path_list,sigma_path_list,carb_cost_list,taxed_countries_list,taxing_countries_list,
                              taxed_sectors_list,specific_taxing_list,fair_tax_list): 
             assert carb_cost is None or specific_taxing is None, 'carb_cost and specific taxing are mutually exclusive parameters'
             assert carb_cost is not None or specific_taxing is not None, 'carb_cost or specific taxing need to be specified'
             
-            cases.append({'carb_cost':carb_cost,
+            cases.append({'eta_path':eta_path,
+                      'sigma_path':sigma_path,
+                      'carb_cost':carb_cost,
                       'taxed_countries': taxed_countries,
                       'taxing_countries': taxing_countries,
                       'taxed_sectors':taxed_sectors,
@@ -471,8 +460,8 @@ def write_solution_csv(results,
                                         'taxing_countries',
                                         'taxed_sectors',
                                         'fair_tax',
-                                        'sigma',
-                                        'eta',
+                                        'sigma_path',
+                                        'eta_path',
                                         'path',
                                         'path_tax_scheme',
                                         'num',
@@ -511,8 +500,8 @@ def write_solution_csv(results,
                     p.taxing_countries,
                     p.taxed_sectors,
                     p.fair_tax,
-                    p.sigma,
-                    p.eta,
+                    p.sigma_path,
+                    p.eta_path,
                     run_path,
                     tax_scheme_path,
                     b.num,

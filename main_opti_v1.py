@@ -14,28 +14,45 @@ import data_funcs as d
 from tqdm import tqdm
 import numpy as np
 
-dir_num = 1
+dir_num = 4
 data_path = main_path+'data/'
 results_path = 'results/'
-eta = 4
-sigma = 4
+
 numeraire_type = 'wage'
 numeraire_country = 'USA'
 
-carb_cost_list = [c/1e6 for c in range(200)]+[c/1e6 for c in range(200,1000,10)]
+EEA = d.countries_from_fta('EEA')
+EU = d.countries_from_fta('EU')
+NAFTA = d.countries_from_fta('NAFTA')
+ASEAN = d.countries_from_fta('ASEAN')
+AANZFTA = d.countries_from_fta('AANZFTA')
+APTA = d.countries_from_fta('APTA')
+MERCOSUR = d.countries_from_fta('MERCOSUR')
+
+carb_cost_list = np.append(np.linspace(0,2.5e-4,251),np.linspace(2.5e-4,1e-3,76)[1:])[46:]
+# eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
+# sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
+eta_path = ['elasticities_agg1.csv']
+sigma_path = ['uniform_elasticities_4.csv']
+# carb_cost_list = [4.6e-4]
 taxed_countries_list = [None]
+# taxing_countries_list = [None,EU,NAFTA,ASEAN,AANZFTA,APTA,EEA,MERCOSUR,
+#                           ['USA'],['CHN'],
+#                           EEA+NAFTA,EEA+ASEAN,EEA+APTA,EEA+AANZFTA,EEA+['USA'],EEA+['CHN'],
+#                           NAFTA+APTA,NAFTA+MERCOSUR,
+#                           APTA+AANZFTA,EU+NAFTA+['CHN'],EU+NAFTA+APTA]
 taxing_countries_list = [None]
 taxed_sectors_list = [None]
 specific_taxing_list = [None]
 fair_tax_list = [False]
 
-cases = d.build_cases(carb_cost_list,taxed_countries_list,taxing_countries_list,
+cases = d.build_cases(eta_path,sigma_path,carb_cost_list,taxed_countries_list,taxing_countries_list,
                       taxed_sectors_list,specific_taxing_list,fair_tax_list)
 
-years = [y for y in range(2018,1994,-1)]
+years = [2018]
 
 for y in years:
-    
+         
     year=str(y)
     
     baseline = d.baseline(year, data_path)
@@ -48,7 +65,7 @@ for y in years:
     
     for simulation_case in tqdm(cases):
         
-        params = d.params(eta,sigma,**simulation_case)
+        params = d.params(data_path, **simulation_case)
         params.num_scale_carb_cost(baseline.num, inplace = True)
         
         if not params.fair_tax:
