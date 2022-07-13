@@ -85,13 +85,18 @@ class baseline:
         print('Loading baseline data '+year)
         self.path = data_path+'yearly_CSV_agg_treated/datas'+year
         
-        cons = pd.read_csv (self.path+'/consumption_'+year+'.csv')
-        iot = pd.read_csv (self.path+'/input_output_'+year+'.csv')
-                           # ,index_col = ['row_country','row_sector','col_country','col_sector'])
-        output = pd.read_csv (self.path+'/output_'+year+'.csv')
-        va = pd.read_csv (self.path+'/VA_'+year+'.csv')
-        co2_intensity = pd.read_csv(self.path+'/co2_intensity_prod_with_agri_ind_proc_fug_'+year+'.csv')
-        co2_prod = pd.read_csv(self.path+'/prod_CO2_with_agri_agri_ind_proc_fug_'+year+'.csv')
+        cons = pd.read_csv (self.path+'/consumption_'+year+'.csv'
+                            ,index_col = ['row_country','row_sector','col_country'])
+        iot = pd.read_csv (self.path+'/input_output_'+year+'.csv'
+                           ,index_col = ['row_country','row_sector','col_country','col_sector'])
+        output = pd.read_csv (self.path+'/output_'+year+'.csv'
+                              ,index_col = ['row_country','row_sector'])
+        va = pd.read_csv (self.path+'/VA_'+year+'.csv'
+                          ,index_col = ['col_country','col_sector'])
+        co2_intensity = pd.read_csv(self.path+'/co2_intensity_prod_with_agri_ind_proc_fug_'+year+'.csv'
+                                    ,index_col = ['country','sector'])
+        co2_prod = pd.read_csv(self.path+'/prod_CO2_with_agri_agri_ind_proc_fug_'+year+'.csv'
+                               ,index_col = ['country','sector'])
         labor = pd.read_csv(data_path+'/World bank/labor_force/labor.csv')
         self.sector_list = get_sector_list()
         self.sector_number = len(self.sector_list)
@@ -99,15 +104,13 @@ class baseline:
         self.country_number = len(self.country_list)
         self.iot = iot
         self.cons = cons
-        self.output = output.rename(columns={
-            'row_country':'country'
-            ,'row_sector':'sector'})
+        self.output = output.rename_axis(['country','sector'])
         self.va = va
         self.co2_intensity = co2_intensity
         self.co2_prod = co2_prod
         self.labor = labor
-        self.deficit = (self.cons.groupby(['col_country'])['value'].sum()
-            - self.va.groupby(['col_country'])['value'].sum()).reset_index()
+        self.deficit = pd.DataFrame(self.cons.groupby(level=2)['value'].sum()
+            - self.va.groupby(level=0)['value'].sum())
         
         self.num_scaled = False
         self.year = year
@@ -146,9 +149,9 @@ class baseline:
         
         if frame.num_scaled == False:
             if numeraire_type == 'output':
-                num = frame.output[frame.output.country == numeraire_country].value.sum()
+                num = frame.output.loc[numeraire_country].value.sum()
             if numeraire_type == 'wage':
-                num = frame.va[frame.va.col_country == numeraire_country].value.sum() \
+                num = frame.va.loc[numeraire_country].value.sum() \
                     / frame.labor.loc[frame.labor.country == numeraire_country, frame.year].to_numpy()[0]
             
             frame.cons.value = frame.cons.value / num
@@ -351,7 +354,6 @@ class params:
                                                                    self.country_number)
         self.num_scaled = False
         self.tax_type = tax_type
-
     
     def copy(self):
         frame = deepcopy(self)

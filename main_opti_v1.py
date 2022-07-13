@@ -13,8 +13,13 @@ import solver_funcs as s
 import data_funcs as d
 from tqdm import tqdm
 import numpy as np
+# from deco import *
+import time
+from time import perf_counter
+from multiprocessing import Pool
+from multiprocessing import Manager
 
-dir_num = 4
+dir_num = 5
 data_path = main_path+'data/'
 results_path = 'results/'
 
@@ -29,7 +34,8 @@ AANZFTA = d.countries_from_fta('AANZFTA')
 APTA = d.countries_from_fta('APTA')
 MERCOSUR = d.countries_from_fta('MERCOSUR')
 
-carb_cost_list = np.append(np.linspace(0,2.5e-4,251),np.linspace(2.5e-4,1e-3,76)[1:])[46:]
+# carb_cost_list = np.append(np.linspace(0,2.5e-4,251),np.linspace(2.5e-4,1e-3,76)[1:])[46:]
+carb_cost_list = np.linspace(0,1e-4,5)
 # eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 # sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 eta_path = ['elasticities_agg1.csv']
@@ -50,9 +56,9 @@ cases = d.build_cases(eta_path,sigma_path,carb_cost_list,taxed_countries_list,ta
                       taxed_sectors_list,specific_taxing_list,fair_tax_list)
 
 years = [2018]
-
+      
 for y in years:
-         
+    y=2018         
     year=str(y)
     
     baseline = d.baseline(year, data_path)

@@ -86,17 +86,17 @@ class sol:
 
         taxed_price = p_hat_sol[:,:,None]*(1+p.carb_cost_np*b.co2_intensity_np[:,:,None])
         consumer_price_agg = np.einsum('itj,itj->tj'
-                                  ,taxed_price**(1-p.sigma) 
+                                  ,taxed_price**(1-p.sigma[None,:,None]) 
                                   ,b.share_cons_o_np 
-                                  ) ** (1/(1 - p.sigma))
+                                  ) ** (1/(1 - p.sigma[:,None]))
         price_agg_no_pow = np.einsum('itj,itjs->tjs'
-                                  ,taxed_price**(1-p.eta) 
+                                  ,taxed_price**(1-p.eta[None,:,None]) 
                                   ,b.share_cs_o_np 
                                   )       
         producer_price_agg = np.divide(1, 
                         price_agg_no_pow , 
                         out = np.ones_like(price_agg_no_pow), 
-                        where = price_agg_no_pow!=0 ) ** (1/(p.eta - 1))  
+                        where = price_agg_no_pow!=0 ) ** (1/(p.eta[:,None,None] - 1))  
         
         I_hat_sol = s.compute_I_hat(p_hat_sol, E_hat_sol, p, b)
         
@@ -108,48 +108,57 @@ class sol:
         
         cons_hat_sol = np.einsum('j,itj->itj',  I_hat_sol , cons_hat_unit)
         utility_cs_hat_sol = np.einsum('itj,itj->tj', 
-                                        cons_hat_sol**((p.sigma-1)/p.sigma) , 
-                                        b.share_cons_o_np ) ** (p.sigma / (p.sigma-1))
+                                        cons_hat_sol**((p.sigma[None,:,None]-1)/p.sigma[None,:,None]) , 
+                                        b.share_cons_o_np ) ** (p.sigma[:,None] / (p.sigma[:,None]-1))
         utility = (utility_cs_hat_sol**beta).prod(axis=0)
         
-        frame.iot = b.iot[['row_country','row_sector','col_country','col_sector']]
-        frame.iot['value'] = iot.ravel()
+        frame.iot = pd.DataFrame(index = b.iot.index,
+                                    data = iot.ravel(),
+                                    columns = ['value'])
         
-        frame.cons = b.cons[['row_country','row_sector','col_country']]
-        frame.cons['value'] = cons.ravel()
+        frame.cons = pd.DataFrame(index = b.cons.index,
+                                    data = cons.ravel(),
+                                    columns = ['value'])
         
-        frame.va = b.va[['col_country','col_sector']]
-        frame.va['value'] = va.ravel()
+        frame.va = pd.DataFrame(index = b.va.index,
+                                    data = va.ravel(),
+                                    columns = ['value'])
         
-        frame.output = b.output[['country','sector']]
-        frame.output['value'] = output.ravel()
+        frame.output = pd.DataFrame(index = b.output.index,
+                                    data = output.ravel(),
+                                    columns = ['value'])
         
-        frame.co2_prod = b.co2_prod[['country','sector']]
-        frame.co2_prod['value'] = co2_prod.ravel()
+        frame.co2_prod = pd.DataFrame(index = b.co2_prod.index,
+                                    data = co2_prod.ravel(),
+                                    columns = ['value'])
             
         frame.price = pd.DataFrame(index = pd.MultiIndex.from_product(
                                                         [b.country_list,b.sector_list],
                                                         names = ['row_country','row_sector']),
                                     data = p_hat_sol.ravel(),
-                                    columns = ['hat']).reset_index()
+                                    columns = ['hat'])#.reset_index()
+        
         frame.taxed_price = pd.DataFrame(index = pd.MultiIndex.from_product(
                                                         [b.country_list,b.sector_list,b.country_list],
                                                         names = ['row_country','row_sector','col_country']),
                                     data = taxed_price.ravel(),
-                                    columns = ['hat']).reset_index()
+                                    columns = ['hat'])#.reset_index()
+        
         frame.consumer_price_agg = pd.DataFrame(index = pd.MultiIndex.from_product(
                                                         [b.sector_list,b.country_list],
                                                         names = ['row_sector','col_country']), 
                                                 data = consumer_price_agg.ravel(),
-                                                columns = ['hat']).reset_index()
+                                                columns = ['hat'])#.reset_index()
+        
         frame.producer_price_agg = pd.DataFrame(index = pd.MultiIndex.from_product(
                                                         [b.sector_list,b.country_list,b.sector_list],
                                                         names = ['row_sector','col_country','col_sector']), 
                                                 data = producer_price_agg.ravel(),
-                                                columns = ['hat']).reset_index()
+                                                columns = ['hat'])#.reset_index()
+        
         frame.utility = pd.DataFrame(index = pd.Index(b.country_list,name='country'), 
                                     data = utility.ravel(),
-                                    columns = ['hat']).reset_index()
+                                    columns = ['hat'])#.reset_index()
         
         return frame
     
