@@ -28,7 +28,7 @@ from cons_funs import*
 # TODO: notes:: ICIO data has 42 non-zero sectors, CEX data 24
 
 # load US consumption data by income quintile
-CE_data = pd.read_csv('data\\US_data.csv')
+CE_data = pd.read_csv('data/US_data.csv')
 
 # get relevant datasets from solutions
 sectors, countries, pq_is_C, pq_is_B, w_s_C, w_s_B, iot_isk_C, iot_isk_B, \

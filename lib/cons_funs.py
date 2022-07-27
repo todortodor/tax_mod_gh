@@ -77,7 +77,7 @@ def get_model_solutions(results_path, data_path, dir_num, year, carb_cost_list, 
     P_tilde_s = np.array(so.consumer_price_agg.reset_index().query("col_country == 'USA'")['hat']).reshape((s))
 
     # get sigmas
-    sigmas = pd.read_csv('data\\elasticities\\' + so.run.sigma_path)
+    sigmas = pd.read_csv('data/elasticities/' + so.run.sigma_path)
     sigma_s = np.array(sigmas['epsilon']).reshape((s))
 
     return sectors, countries, pq_is_C, pq_is_B, w_s_C, w_s_B, iot_isk_C, \
@@ -183,7 +183,8 @@ def get_consumer_problem_solution(p_tilde_is, emint_is_B, carb_cost_is_C, sigma_
     beta_sn[beta_sn<1e-10] = 0
 
     # tax_paid (approach 2)
-    tau_sn_2 = np.einsum('sn,sn->sn', beta_sn, I_n_C - np.sum(pq_isn_C,axis=0))
+    # tau_sn_2 = np.einsum('sn,sn->sn', beta_sn, I_n_C - np.sum(pq_isn_C,axis=0))
+    tau_sn_2 = np.einsum('sn,n->sn', beta_sn, I_n_C) - np.sum(pq_isn_C,axis=0)
 
     # compute total tax paid
     tax_n = np.sum(tau_sn, axis=0)
