@@ -188,7 +188,7 @@ class sol:
                   compute_hats = False,
                   return_not_found_cases=False,
                   drop_duplicate_runs = False,
-                  keep = 'first'):
+                  keep = 'last'):
 
         if isinstance(dir_num,int):
             dir_num = [dir_num]
@@ -262,13 +262,19 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
                                       keep = keep)
     
     print(str(len(found_cases))+' cases found out of '+str(len(found_cases)+len(not_found_cases)))
+    print('Found cases for '+str(len(runs.year.drop_duplicates()))+' years')
+    
+    found_years = relevant_runs.year.drop_duplicates().to_list()
+    not_found_years = [y for y in years if int(y) not in found_years]
+    if not_found_years is not None:
+      print('Years not found :',not_found_years)  
     
     return relevant_runs, found_cases, not_found_cases
         
 def look_for_cas_in_runs(cas,runs,results_path):
         
     if cas['specific_taxing'] is None:
-        condition1 = pd.Series(np.isclose(runs['carb_cost'].fillna(1e12), cas['carb_cost']))
+        condition1 = pd.Series(np.isclose(runs['carb_cost'].fillna(1e12), cas['carb_cost']), index = runs.index)
         
         if cas['taxed_countries'] is None:
             condition2 = runs['taxed_countries'].isna()
@@ -291,10 +297,11 @@ def look_for_cas_in_runs(cas,runs,results_path):
         
         condition7 = (runs['sigma_path'] == cas['sigma_path'])
         
-        condition = condition1 & condition2 & condition3 & condition4 & condition5 & condition6 & condition7
+        # condition = condition1 & condition2 & condition3 & condition4 & condition5 & condition6 & condition7
+        condition = condition1 * condition2 * condition3 * condition4 * condition5 * condition6 * condition7
         
     if cas['specific_taxing'] is not None:
-        condition1 = pd.Series([False]*len(runs))
+        condition1 = pd.Series([False]*len(runs), index = runs.index)
         for i,run in runs.iterrows():
             if 'specific' in run['tax_type']:
                 condition1.iloc[i] = all(np.isclose(cas['specific_taxing'].value.values,
