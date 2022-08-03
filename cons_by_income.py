@@ -25,6 +25,7 @@ from cons_funs import*
 # - w = value added
 # -
 
+
 # TODO: notes:: ICIO data has 42 non-zero sectors, CEX data 24
 
 # load US consumption data by income quintile
@@ -61,7 +62,7 @@ pq_isn_B, pq_sn_CEX = prep_CEX(labels, dims, CE_data, pq_is_B, year=2018)
 I_tilde_n, I_n_B, I_n_C = get_i_tilde_n(labels, dims, pq_sn_CEX, w_s_B, w_s_C, iot_isk_C, pq_is_C, emint_is_B, carb_cost_is_C)
 
 # solve consumer problem
-t_is, q_tilde_isn, pq_isn_C, T_sn_C, tau_sn, tau_sn_2, tax_n = \
+t_is, q_tilde_isn, pq_isn_C, T_sn_C, tau_sn, tau_sn_2, tax_n, beta_sn = \
     get_consumer_problem_solution(p_tilde_is, emint_is_B, carb_cost_is_C, sigma_s,
                                   P_tilde_s, I_tilde_n, pq_isn_B, pq_sn_CEX, I_n_C)
 
