@@ -36,9 +36,9 @@ year = 2018
 
 # tax_test_1 = pd.read_csv(results_path+'test1.csv',index_col = [0,1])
 
-carb_cost_list = np.linspace(0,1e-3,101)
-eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
-sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
+carb_cost_list = np.linspace(0,1e-4,11) # TODO: modify for list of different carbon costs (most used is 1e-4)
+eta_path = ['uniform_elasticities_4.csv']
+sigma_path = ['uniform_elasticities_4.csv']
 # eta_path = ['elasticities_agg1.csv']
 # sigma_path = ['uniform_elasticities_4.csv']
 # carb_cost_list = [4.6e-4]
@@ -71,6 +71,28 @@ sols, baselines, relevant_runs, found_cases, not_found_cases = t.sol.load_sols(c
                                                       keep='last')
 
 #%%
+
+
+#########
+so = sols[-1] # select scenario with 1e-4 tax
+so.elements()
+
+so.iot
+
+so.params.elements()
+so.params.carb_cost_df  # ---> = 1e-4
+
+ba = baselines[2018]
+ba.elements()
+ba.co2_intensity
+
+
+# get consumption for scenario 1
+
+
+
+
+#########
 
 fig, ax = plt.subplots(figsize = (12,8))
 
