@@ -16,8 +16,8 @@ import numpy as np
 # from deco import *
 import time
 from time import perf_counter
-from multiprocessing import Pool
-from multiprocessing import Manager
+# from multiprocessing import Pool
+# from multiprocessing import Manager
 
 dir_num = 5
 data_path = main_path+'data/'
@@ -58,7 +58,7 @@ cases = d.build_cases(eta_path,sigma_path,carb_cost_list,taxed_countries_list,ta
 years = [2018]
       
 for y in years:
-    y=2018         
+    # y=2018         
     year=str(y)
     
     baseline = d.baseline(year, data_path)
@@ -83,4 +83,4 @@ for y in years:
         #compute some aggregated solution quantities to write directly in runs report
         emissions_sol, utility, utility_countries = s.compute_emissions_utility(results, params, baseline)
         
-        d.write_solution_csv(results,results_path,dir_num,emissions_sol,utility,params,baseline)
+        # d.write_solution_csv(results,results_path,dir_num,emissions_sol,utility,params,baseline)
