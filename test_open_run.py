@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 
 results_path = main_path+'results/'
 data_path = main_path+'data/'
-dir_num = 4
+# dir_num = [1,2,3,4] can be a list to look in multiple directories
+dir_num = 200
 year = 2018
 
 # test = pd.read_csv(t.dir_path(results_path,year,dir_num)+'/runs.csv', 
@@ -36,7 +37,7 @@ year = 2018
 
 # tax_test_1 = pd.read_csv(results_path+'test1.csv',index_col = [0,1])
 
-carb_cost_list = np.linspace(0,1e-3,101)
+carb_cost_list = np.linspace(0,1e-4,11)
 # carb_cost_list = [None]
 eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']

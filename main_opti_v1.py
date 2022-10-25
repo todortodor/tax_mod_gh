@@ -20,7 +20,7 @@ from time import perf_counter
 # from multiprocessing import Pool
 # from multiprocessing import Manager
 
-dir_num = 99
+dir_num = 200
 data_path = main_path+'data/'
 results_path = 'results/'
 
@@ -36,7 +36,7 @@ APTA = d.countries_from_fta('APTA')
 MERCOSUR = d.countries_from_fta('MERCOSUR')
 
 # carb_cost_list = np.append(np.linspace(0,2.5e-4,251),np.linspace(2.5e-4,1e-3,76)[1:])[46:]
-carb_cost_list = np.linspace(0,1e-4,2)
+carb_cost_list = np.linspace(0,1e-4,11)
 # carb_cost_list = [None]
 # eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 # sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']

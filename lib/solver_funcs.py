@@ -104,7 +104,7 @@ def solve_p(E, params, baseline, price_init = None):
                                     max_weight_norm=max_weight_norm)
 
     while condition:
-        if count!=0:
+        if count>0:
             price_new = price_new.ravel()
             price_old = price_old.ravel()
             aa_wrk.apply(price_new, price_old)
@@ -120,7 +120,7 @@ def solve_p(E, params, baseline, price_init = None):
                         price_agg_no_pow , 
                         out = np.ones_like(price_agg_no_pow), 
                         where = price_agg_no_pow!=0 ) ** (1/(p.eta[:,None,None] - 1))            
-        prod = ( price_agg ** b.gamma_sector_np ).prod(axis = 0)       
+        prod = ( price_agg ** b.gamma_sector_np ).prod(axis = 0)
         wage_hat = np.einsum('js,js->j', E , b.va_share_np )    
         price_new = wage_hat[:,None]**b.gamma_labor_np * prod
         
@@ -189,12 +189,13 @@ def solve_E(params, baseline, E_init = None):
         E_old = E_init
 
     dim = C*S
-    mem = 5
-    type1 = False
-    regularization = 1e-10
-    relaxation=1/4
-    safeguard_factor=1
-    max_weight_norm=1e6 
+    mem = 5 #memory of Anderson Acceleration, empirically 5 is good, is optimization between
+            #number of steps and computational time of 1 step
+    type1 = False #type of Anderson Acceleration, empirically should stay 2, so False
+    regularization = 1e-10 #lower value is faster, higher value is more stable, stable between 1e-8 and 1e-12
+    relaxation=1/4 #doesnt matter
+    safeguard_factor=1 #1 is max and it's fine
+    max_weight_norm=1e6 #prevents diverging
     aa_wrk = aa.AndersonAccelerator(dim, mem, type1, 
                                     regularization=regularization,
                                     relaxation=relaxation, 
@@ -205,7 +206,7 @@ def solve_E(params, baseline, E_init = None):
         t1 = perf_counter()
         
     while condition:
-        if count!=0:
+        if count>0:
             E_new = E_new.ravel()
             E_old = E_old.ravel()
             aa_wrk.apply(E_new, E_old)
