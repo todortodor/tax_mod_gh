@@ -81,3 +81,19 @@ sols, baselines, relevant_runs, found_cases, not_found_cases = t.sol.load_sols(c
                                                       return_not_found_cases=True,
                                                       drop_duplicate_runs=True,
                                                       keep='last')
+
+#%%
+
+y = []
+x = []
+for sol in sols:
+    y.append(sol.output.loc['USA'].sum())
+    x.append(sol.params.carb_cost)
+
+fig, ax = plt.subplots(figsize=(12,8))
+ax.plot(x,y, lw =5)
+ax.set_xlabel('Carbon tax', fontsize=20)
+ax.set_ylabel('Output of the USA', fontsize=20)
+plt.title('Example plot', fontsize = 25)
+
+plt.show()
