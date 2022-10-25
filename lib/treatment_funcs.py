@@ -35,7 +35,7 @@ class sol:
             self.params = d.params(data_path,
                                    eta_path =run.eta_path,
                                    sigma_path = run.sigma_path,
-                                   specific_taxing = pd.read_csv(self.results_path+run.path_tax_scheme, 
+                                   specific_taxing = pd.read_csv(self.run.path_tax_scheme, 
                                                                  index_col=['row_country','row_sector','col_country']),
                                    fair_tax = run.fair_tax)
             
@@ -285,7 +285,7 @@ def look_for_cas_in_runs(cas,runs,results_path):
             condition3 = runs['taxing_countries'].isna()
         else:
             condition3 = (runs['taxing_countries'] == str(sorted(cas['taxing_countries'])))
-            
+        
         if cas['taxed_sectors'] is None:
             condition4 = runs['taxed_sectors'].isna()
         else:
@@ -305,7 +305,7 @@ def look_for_cas_in_runs(cas,runs,results_path):
         for i,run in runs.iterrows():
             if 'specific' in run['tax_type']:
                 condition1.iloc[i] = all(np.isclose(cas['specific_taxing'].value.values,
-                                    pd.read_csv(results_path+run.path_tax_scheme,index_col=[0,1,2]).value.values))
+                                    pd.read_csv(run.path_tax_scheme,index_col=[0,1,2]).value.values))
         
         condition2 = (runs['eta_path'] == cas['eta_path'])
         

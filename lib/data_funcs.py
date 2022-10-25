@@ -284,7 +284,7 @@ class params:
             self.carb_cost_df = pd.DataFrame(
                 index = pd.MultiIndex.from_product(
                     [self.country_list,self.sector_list,self.country_list], 
-                    names = ['row_country','sector','col_country']),
+                    names = ['row_country','row_sector','col_country']),
                 columns = ['value'],
                 data = np.ones(self.country_number * self.sector_number * self.country_number)*carb_cost
                 )
@@ -336,7 +336,7 @@ class params:
             self.taxed_sectors = None
             self.carb_cost_df = specific_taxing
             self.carb_cost_df.sort_index(inplace = True)
-            self.carb_cost_df.index.rename(['row_country','row_sector','col_sector'], inplace = True)
+            self.carb_cost_df.index.rename(['row_country','row_sector','col_country'], inplace = True)
             assert np.all( self.carb_cost_df.index == pd.MultiIndex.from_product(
                 [self.country_list,
                 self.sector_list,
@@ -485,7 +485,7 @@ def write_solution_csv(results,
         
     if 'specific' in p.tax_type:       
         tax_scheme_path = results_path+run_path[:-4]+'_tax_scheme.csv'
-        p.num_scale_back_carb_cost().carb_cost_df.to_csv(results_path+tax_scheme_path)
+        p.num_scale_back_carb_cost().carb_cost_df.to_csv(tax_scheme_path)
     else:
         tax_scheme_path = None
     

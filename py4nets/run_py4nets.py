@@ -7,7 +7,7 @@ Created on Wed May 25 08:07:29 2022
 """
 
 import sys
-main_path = ("/Users/simonl/Dropbox/Mac/Documents/taff/tax_mod/")
+main_path = ("/Users/simonl/Dropbox/Mac/Documents/taff/tax_mod_gh/")
 sys.path.append(main_path+"lib/")
 sys.path.append(main_path+"py4nets/")
 import py4nets_funcs as py4nets
@@ -19,13 +19,17 @@ dir_num = 2
 
 y=2018 #year
 carb_cost = 1e-4 #carbon tax in million dollars by ton of CO2
-taxed_countries = ['CHN']
+taxed_countries = None
 taxing_countries = ['USA']
 taxed_sectors = None
 specific_taxing = None
 fair_tax = False
+eta_path = 'uniform_elasticities_4.csv'
+sigma_path = 'uniform_elasticities_4.csv'
 
-simulation_case = {'carb_cost':carb_cost,
+simulation_case = {'eta_path':eta_path,
+                   'sigma_path':sigma_path,
+                   'carb_cost':carb_cost,
                     'taxed_countries': taxed_countries,
                     'taxing_countries': taxing_countries,
                     'taxed_sectors':taxed_sectors,
@@ -35,14 +39,14 @@ final_or_inter_or_total = 'total'  # 'inter' or 'final' or 'total'
 """"trade flows for final demand or trade flows of intermediate inputs or total trade flows
 This is not a very interesting quantity to look at"""
 
-baseline = d.baseline(y, data_path)
+# baseline = d.baseline(y, data_path)
 relevant_runs,found_cases,not_found_cases = t.find_runs(simulation_case,
                                                         results_path,
                                                         dir_num,
                                                         y,
                                                         drop_duplicate_runs = True,
                                                         keep='last')
-sol = t.sol(relevant_runs.squeeze(), results_path).compute_solution(baseline)
+sol = t.sol(relevant_runs.squeeze(), results_path, data_path).compute_solution(baseline)
 
 nodes_unpivoted, edges_unpivoted, nodes_total, edges_total, world, traded = \
     py4nets.load_baseline_compute_initial(sol, baseline, data_path, final_or_inter_or_total)

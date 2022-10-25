@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 results_path = main_path+'results/'
 data_path = main_path+'data/'
-dir_num = 3
+dir_num = 4
 year = 2018
 
 # test = pd.read_csv(t.dir_path(results_path,year,dir_num)+'/runs.csv', 
@@ -37,6 +37,7 @@ year = 2018
 # tax_test_1 = pd.read_csv(results_path+'test1.csv',index_col = [0,1])
 
 carb_cost_list = np.linspace(0,1e-3,101)
+# carb_cost_list = [None]
 eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 # eta_path = ['elasticities_agg1.csv']
@@ -51,6 +52,16 @@ taxed_countries_list = [None]
 taxing_countries_list = [None]
 taxed_sectors_list = [None]
 specific_taxing_list = [None]
+# spec_tax = pd.DataFrame(index = pd.MultiIndex.from_product([d.get_country_list(),
+#                                                             d.get_sector_list(),
+#                                                             d.get_country_list()],
+#                                                             names = ['row_country',
+#                                                                     'row_sector',
+#                                                                     'col_country']),
+#                         columns = ['value'])
+# spec_tax['value'] = 1e-4
+# spec_tax.loc[:,'94T98',:] = 0.5e-4
+# specific_taxing_list = [spec_tax]
 fair_tax_list = [False]
 
 cases = d.build_cases(eta_path,sigma_path,carb_cost_list,taxed_countries_list,taxing_countries_list,

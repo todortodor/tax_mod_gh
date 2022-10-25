@@ -14,12 +14,13 @@ import data_funcs as d
 from tqdm import tqdm
 import numpy as np
 # from deco import *
+import pandas as pd
 import time
 from time import perf_counter
 # from multiprocessing import Pool
 # from multiprocessing import Manager
 
-dir_num = 5
+dir_num = 99
 data_path = main_path+'data/'
 results_path = 'results/'
 
@@ -35,7 +36,8 @@ APTA = d.countries_from_fta('APTA')
 MERCOSUR = d.countries_from_fta('MERCOSUR')
 
 # carb_cost_list = np.append(np.linspace(0,2.5e-4,251),np.linspace(2.5e-4,1e-3,76)[1:])[46:]
-carb_cost_list = np.linspace(0,1e-4,5)
+carb_cost_list = np.linspace(0,1e-4,2)
+# carb_cost_list = [None]
 # eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 # sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 eta_path = ['elasticities_agg1.csv']
@@ -49,6 +51,16 @@ taxed_countries_list = [None]
 #                           APTA+AANZFTA,EU+NAFTA+['CHN'],EU+NAFTA+APTA]
 taxing_countries_list = [None]
 taxed_sectors_list = [None]
+# spec_tax = pd.DataFrame(index = pd.MultiIndex.from_product([d.get_country_list(),
+#                                                             d.get_sector_list(),
+#                                                             d.get_country_list()],
+#                                                             names = ['row_country',
+#                                                                     'row_sector',
+#                                                                     'col_country']),
+#                         columns = ['value'])
+# spec_tax['value'] = 1e-4
+# spec_tax.loc[:,'94T98',:] = 0.5e-4
+# specific_taxing_list = [spec_tax]
 specific_taxing_list = [None]
 fair_tax_list = [False]
 
@@ -83,4 +95,4 @@ for y in years:
         #compute some aggregated solution quantities to write directly in runs report
         emissions_sol, utility, utility_countries = s.compute_emissions_utility(results, params, baseline)
         
-        # d.write_solution_csv(results,results_path,dir_num,emissions_sol,utility,params,baseline)
+        d.write_solution_csv(results,results_path,dir_num,emissions_sol,utility,params,baseline)
