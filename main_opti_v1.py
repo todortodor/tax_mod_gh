@@ -20,7 +20,7 @@ from time import perf_counter
 # from multiprocessing import Pool
 # from multiprocessing import Manager
 
-dir_num = 200
+dir_num = 150
 data_path = main_path+'data/'
 results_path = 'results/'
 
@@ -36,11 +36,12 @@ APTA = d.countries_from_fta('APTA')
 MERCOSUR = d.countries_from_fta('MERCOSUR')
 
 # carb_cost_list = np.append(np.linspace(0,2.5e-4,251),np.linspace(2.5e-4,1e-3,76)[1:])[46:]
-carb_cost_list = np.linspace(0,1e-4,11)
+# carb_cost_list = np.linspace(0,1e-4,11)
+carb_cost_list = [1000]
 # carb_cost_list = [None]
 # eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
 # sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
-eta_path = ['elasticities_agg1.csv']
+eta_path = ['uniform_elasticities_4.csv']
 sigma_path = ['uniform_elasticities_4.csv']
 # carb_cost_list = [4.6e-4]
 taxed_countries_list = [None]
@@ -58,8 +59,8 @@ taxed_sectors_list = [None]
 #                                                                     'row_sector',
 #                                                                     'col_country']),
 #                         columns = ['value'])
-# spec_tax['value'] = 1e-4
-# spec_tax.loc[:,'94T98',:] = 0.5e-4
+# spec_tax['value'] = 0
+# spec_tax.loc[spec_tax.query("row_country != col_country").index, 'value'] = 1
 # specific_taxing_list = [spec_tax]
 specific_taxing_list = [None]
 fair_tax_list = [False]
@@ -95,4 +96,4 @@ for y in years:
         #compute some aggregated solution quantities to write directly in runs report
         emissions_sol, utility, utility_countries = s.compute_emissions_utility(results, params, baseline)
         
-        d.write_solution_csv(results,results_path,dir_num,emissions_sol,utility,params,baseline)
+        # d.write_solution_csv(results,results_path,dir_num,emissions_sol,utility,params,baseline)

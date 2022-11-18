@@ -119,13 +119,21 @@ def solve_p(E, params, baseline, price_init = None):
         price_agg = np.divide(1, 
                         price_agg_no_pow , 
                         out = np.ones_like(price_agg_no_pow), 
-                        where = price_agg_no_pow!=0 ) ** (1/(p.eta[:,None,None] - 1))            
+                        where = price_agg_no_pow!=0 ) ** (1/(p.eta[:,None,None] - 1))
+        # price_agg = np.divide(1, 
+        #                 price_agg_no_pow , 
+        #                 out = np.full_like(price_agg_no_pow,np.inf), 
+        #                 where = price_agg_no_pow!=0 ) ** (1/(p.eta[:,None,None] - 1))
+        # plt.plot(price_agg_no_pow.ravel())    
+        # plt.show()        
         prod = ( price_agg ** b.gamma_sector_np ).prod(axis = 0)
         wage_hat = np.einsum('js,js->j', E , b.va_share_np )    
         price_new = wage_hat[:,None]**b.gamma_labor_np * prod
         
         condition = np.linalg.norm(price_new - price_old)/np.linalg.norm(price_new) > tol_p
         count+=1
+        # plt.plot(price_new.ravel())
+        # plt.show()
     
     return price_new
 
@@ -164,6 +172,11 @@ def E_func(E_old,params,baseline,price_init = None):
     
     E_new = price * (T + np.einsum('itj,j,j->it',B,b.deficit_np,one_over_K)) / b.output_np
     
+    # plt.plot(T.ravel(),label = 'T')
+    # plt.plot(np.einsum('itj,j,j->it',B,b.deficit_np,one_over_K).ravel(), label = 'B')
+    # plt.legend()
+    # plt.show()
+    
     E_new = E_new / E_new.mean()
     
     return E_new, price
@@ -172,7 +185,7 @@ def solve_E(params, baseline, E_init = None):
     C = baseline.country_number
     S = baseline.sector_number
         
-    tol_E = 1e-8
+    tol_E = 1e-3
     convergence_window = 2
     smooth_large_jumps = True
     plot_history = False
@@ -221,6 +234,7 @@ def solve_E(params, baseline, E_init = None):
                     
             E_new[E_new<0]=0
             E_old = E_new.reshape(C,S)
+            # E_old = (E_new.reshape(C,S)+E_old.reshape(C,S))/2
         
         E_new, price_init = E_func(E_old,params,baseline, price_init)
         
@@ -234,6 +248,12 @@ def solve_E(params, baseline, E_init = None):
         
         condition = np.any(convergence[-convergence_window:] > tol_E)
         count += 1
+        
+        # plt.plot(E_new.ravel()-E_old.ravel())
+        # plt.show()
+        
+        plt.semilogy(convergence)
+        plt.show()
         
         if plot_history or plot_convergence:
             E_history.append(E_old)
