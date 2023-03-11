@@ -185,7 +185,7 @@ def solve_E(params, baseline, E_init = None):
     C = baseline.country_number
     S = baseline.sector_number
         
-    tol_E = 1e-3
+    tol_E = 1e-8
     convergence_window = 2
     smooth_large_jumps = True
     plot_history = False
@@ -252,8 +252,8 @@ def solve_E(params, baseline, E_init = None):
         # plt.plot(E_new.ravel()-E_old.ravel())
         # plt.show()
         
-        plt.semilogy(convergence)
-        plt.show()
+        # plt.semilogy(convergence)
+        # plt.show()
         
         if plot_history or plot_convergence:
             E_history.append(E_old)

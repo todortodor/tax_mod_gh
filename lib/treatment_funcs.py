@@ -8,8 +8,8 @@ Created on Sat Feb 12 08:39:51 2022
 
 import pandas as pd
 import numpy as np
-import solver_funcs as s
-import data_funcs as d
+import lib.solver_funcs as s
+import lib.data_funcs as d
 import sys
 from copy import deepcopy
 import itertools
