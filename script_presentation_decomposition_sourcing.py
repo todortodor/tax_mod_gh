@@ -48,15 +48,15 @@ carb_cost_list = np.linspace(0,1e-3,101)
 # carb_cost_list = [1e-4]
 # eta_path = ['elasticities_agg1.csv']
 # sigma_path = ['elasticities_agg1.csv']
-
-list_of_elasticities = ['rescaled_to_4elasticities_agg1.csv',
- 'rescaled_to_5elasticities_agg1.csv',
- 'rescaled_to_4_output_weightedelasticities_agg1.csv',
- 'rescaled_to_5_output_weightedelasticities_agg1.csv',
- 'rescaled_to_4elasticities_agg2.csv',
- 'rescaled_to_5elasticities_agg2.csv',
- 'rescaled_to_4_output_weightedelasticities_agg2.csv',
- 'rescaled_to_5_output_weightedelasticities_agg2.csv']
+list_of_elasticities = ['uniform_elasticities_4.csv']
+# list_of_elasticities = ['rescaled_to_4elasticities_agg1.csv',
+#  'rescaled_to_5elasticities_agg1.csv',
+#  'rescaled_to_4_output_weightedelasticities_agg1.csv',
+#  'rescaled_to_5_output_weightedelasticities_agg1.csv',
+#  'rescaled_to_4elasticities_agg2.csv',
+#  'rescaled_to_5elasticities_agg2.csv',
+#  'rescaled_to_4_output_weightedelasticities_agg2.csv',
+#  'rescaled_to_5_output_weightedelasticities_agg2.csv']
 
 for elast_path in list_of_elasticities:
 
@@ -933,6 +933,73 @@ for elast_path in list_of_elasticities:
         plt.savefig(save_path+'term_2.'+save_format,format=save_format)
     
     plt.show()
+    #%% plot composition term WITH REAL $$
+    
+    trade_baseline = trade['baseline'].values.reshape((N,S,N))
+    trade_cf = trade[10].values.reshape((N,S,N)) 
+    
+    fig, ax = plt.subplots(figsize=(25,15))
+    ax2 = ax.twinx()
+    colors = [sns.color_palette()[i] for i in [2,1,3,4,0,5]]
+    texts = []
+    data_base = sector_map.copy()
+    data_base['y'] = np.einsum('s,s,s->s',
+                       epsilon_s(trade_baseline,e),
+                       alpha_s(trade_cf)-alpha_s(trade_baseline),
+                       1/alpha_s(trade_baseline))
+    data_base['y2'] = (alpha_s(trade_cf)-alpha_s(trade_baseline))*np.einsum('isj->',trade_baseline)
+    ax2.axhline(y=0, color='k', linestyle='-',lw=0.5,zorder=1000)
+    ax.bar(0,0,color='grey',label = r'$\frac{dE_s}{E}$')
+    ax.scatter([],[],color='grey',label = r'$d\alpha_s$',marker='^',s=1000)
+    for g,group_label in enumerate(data_base.group_label.drop_duplicates()):
+        data = data_base.loc[data_base['group_label'] == group_label]
+        bars = ax.bar(data.industry,data.y, label = group_label,color=colors[g])
+        ax2.scatter(data.industry,data.y2,color=colors[g],
+                    edgecolors='k',marker='^',s=1000)
+        # ax.bar_label(bars,
+        #              labels=data.industry,
+        #              rotation=90,
+        #               label_type = 'edge',
+        #               padding=5,
+        #               # color=colors[g],
+        #               zorder=99)
+        
+        texts_group = [ax2.text(data.industry.iloc[i], 
+                data.y2.iloc[i]-0.0005, 
+                industry,
+                size=20,
+                # color=colors[g],
+                rotation = 90,ha='center',va='top') 
+                for i,industry in enumerate(data.industry)]     # For kernel density
+        # texts = texts+texts_group
+    # ax2.scatter(np.arange(len(epsilon_s(trade_baseline, e))),epsilon_s(trade_baseline, e)/alpha_s(trade_cf),color = 'r')
+    ax2.grid(None)
+    
+    
+    # ax.set_xlabel('Sector',fontsize = 30)
+    ax.set_ylabel(r'$\left(\frac{dE_s}{E}\right)_{_2}$',fontsize = 35,rotation=0,labelpad = 30,va='center')
+    ax2.set_ylabel(r'$d\alpha_s$',fontsize = 35,rotation=0,labelpad = 30,va='center')
+    ax.set_ylim([-0.08,0.08])
+    # ax2.set_ylim([-0.008,0.008]) #!!! put limits back
+    ax.legend(fontsize = 25)
+    # plt.xscale('log')
+    # plt.title('Term 2', fontsize = 30)
+    ax2.set_xticklabels(['']
+                        , rotation=45
+                        , ha='right'
+                        , rotation_mode='anchor'
+                        ,fontsize=19)
+    
+    
+    # adjust_text(texts, precision=0.001,
+    #         expand_text=(1.01, 1.05), expand_points=(1.01, 1.05),
+    #         force_text=(0.01, 0.25), force_points=(0.01, 0.25),
+    #         arrowprops=dict(arrowstyle='-', color='k'#, alpha=.5
+                            # ))
+    if save or save_all:
+        plt.savefig(save_path+'term_2.'+save_format,format=save_format)
+    
+    plt.show()
     
     #%% sunburst term2 shares
     import kaleido
@@ -1416,6 +1483,80 @@ for elast_path in list_of_elasticities:
                        alpha_is(trade_cf)-alpha_is(trade_baseline),
                        1/alpha_is(trade_baseline))
     data_base['y2'] = (alpha_is(trade_cf)-alpha_is(trade_baseline)).sum(axis=1)
+    ax2.axhline(y=0, color='k', linestyle='-',lw=0.5,zorder=1000)
+    # ax.bar(0,0,color='grey',label = r'$\sum_s dE_{is}$')
+    # ax.scatter([],[],color='grey',label = r'$\sum_s d\alpha_{is}$',marker='^',s=1000)
+    data = data_base
+    bars = ax.bar(data.country_name,data.y)
+    ax2.scatter(data.country_name,data.y2,color=sns.color_palette()[1],
+                edgecolors='k',marker='^',s=1000)
+    # ax.bar_label(bars,
+    #              labels=data.industry,
+    #              rotation=90,
+    #               label_type = 'edge',
+    #               padding=5,
+    #               # color=colors[g],
+    #               zorder=99)
+    
+    texts_group = [ax2.text(data.country_name.iloc[i], 
+            data.y2.iloc[i]-0.02, 
+            country,
+            size=15,
+            # color=colors[g],
+            rotation = 90,ha='center',va='top') 
+            for i,country in enumerate(data.country_name)]     # For kernel density
+        # texts = texts+texts_group
+    # ax2.scatter(np.arange(len(epsilon_s(trade_baseline, e))),epsilon_s(trade_baseline, e)/alpha_s(trade_cf),color = 'r')
+    ax2.grid(None)
+    
+    
+    # ax.set_xlabel('Sector',fontsize = 30)
+    ax.set_ylabel(r'$\left(\sum_s \frac{dE_{is}}{E_{is}} \right)_{_3}$',fontsize = 35,rotation=0,labelpad = 80,va='center')
+    ax2.set_ylabel(r'$\left(\sum_s d\alpha_{is}\right)_3$',fontsize = 35,rotation=0,labelpad = 80,va='center')
+    ax.set_ylim([-0.025,0.025])
+    ax2.set_ylim([-0.4,0.4])
+    # ax.legend(fontsize = 25)
+    # plt.xscale('log')
+    # plt.title('Term 2', fontsize = 30)
+    ax2.set_xticklabels(['']
+                        , rotation=45
+                        , ha='right'
+                        , rotation_mode='anchor'
+                        ,fontsize=19)
+    
+    
+    # adjust_text(texts, precision=0.001,
+    #         expand_text=(1.01, 1.05), expand_points=(1.01, 1.05),
+    #         force_text=(0.01, 0.25), force_points=(0.01, 0.25),
+    #         arrowprops=dict(arrowstyle='-', color='k'#, alpha=.5
+                            # ))
+    if save or save_all:
+        plt.savefig(save_path+'term_3_i.'+save_format,format=save_format)
+    
+    plt.show()
+    
+    #%% plot term 3 with real $$
+    
+    trade_baseline = trade['baseline'].values.reshape((N,S,N))
+    trade_cf = trade[10].values.reshape((N,S,N)) 
+    
+    fig, ax = plt.subplots(figsize=(25,15))
+    ax2 = ax.twinx()
+    colors = [sns.color_palette()[i] for i in [2,1,3,4,0,5]]
+    texts = []
+    countries = pd.read_csv('data/countries_after_agg.csv',sep=';').sort_values('country').set_index('country')
+    # data_base = pd.DataFrame(index = pd.MultiIndex.from_product([b.country_list,
+    #                                                               b.sector_list],
+    #                                                             names = ['country','sector'])).reset_index()
+    # data_base = pd.DataFrame(index = pd.Index(b.country_list,name = 'country'))
+    data_base = countries.copy()
+    data_base['y'] = np.einsum('is,is,is->i',
+                       epsilon_is(trade_baseline,e),
+                       alpha_is(trade_cf)-alpha_is(trade_baseline),
+                       1/alpha_is(trade_baseline))
+    data_base['y2'] = np.einsum('is,s->i',alpha_is(trade_cf)-alpha_is(trade_baseline),
+                                          np.einsum('isj->s',trade_baseline)
+                                )
     ax2.axhline(y=0, color='k', linestyle='-',lw=0.5,zorder=1000)
     # ax.bar(0,0,color='grey',label = r'$\sum_s dE_{is}$')
     # ax.scatter([],[],color='grey',label = r'$\sum_s d\alpha_{is}$',marker='^',s=1000)
