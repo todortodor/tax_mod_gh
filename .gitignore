@@ -4,3 +4,10 @@
 /graph_images
 /pyhon_env
 .idea/
+*.eps
+*.pdf
+*.html
+*.key
+*.png
+*.pyc
+*.pyc
