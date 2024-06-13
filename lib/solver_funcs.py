@@ -579,9 +579,9 @@ def solve_one_loop(params, baseline, vec_init = None, tol=1e-9, damping=5):
         
         # p_new = p_old
         
-        # E_new = E_new / E_new.mean()
-        # I_new = I_new / E_new.mean()
-        # p_new = p_new / E_new.mean()
+        E_new = E_new / E_new.mean()
+        I_new = I_new / E_new.mean()
+        p_new = p_new / E_new.mean()
         
         # E_new, price_init = E_func(E_old,params,baseline, price_init)
         if count == 0:

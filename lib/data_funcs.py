@@ -633,7 +633,7 @@ def write_solution_csv(results,
                     b.num_type,
                     b.num_country,
                     emissions_sol,
-                    utility], 
+                    utility],
                     index = runs.columns).T
     runs = pd.concat([runs, run],ignore_index=True)
     runs.to_csv(runs_path)
