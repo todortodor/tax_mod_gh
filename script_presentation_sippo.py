@@ -35,7 +35,6 @@ plt.rcParams['text.usetex'] = False
 
 #%% load data
 
-
 data_path = 'data/'
 results_path = 'results/'
 
@@ -45,23 +44,9 @@ save_format = 'eps'
 save_format = 'png'
 
 carb_cost_list = np.linspace(0,1e-3,1001)
-# carb_cost_list = np.concatenate([np.array([0]),np.logspace(-4,2,61)])
-# carb_cost_list = [1e-4]
-# eta_path = ['elasticities_agg1.csv']
-# sigma_path = ['elasticities_agg1.csv']
 elast_path = 'cp_estimate_allyears.csv'
-# list_of_elasticities = ['rescaled_to_4elasticities_agg1.csv',
-#  'rescaled_to_5elasticities_agg1.csv',
-#  'rescaled_to_4_output_weightedelasticities_agg1.csv',
-#  'rescaled_to_5_output_weightedelasticities_agg1.csv',
-#  'rescaled_to_4elasticities_agg2.csv',
-#  'rescaled_to_5elasticities_agg2.csv',
-#  'rescaled_to_4_output_weightedelasticities_agg2.csv',
-#  'rescaled_to_5_output_weightedelasticities_agg2.csv']
 
-# for elast_path in list_of_elasticities:
-
-save_path = 'presentation_material/'+elast_path[:-4]+'_world_va_prod_tax/'
+save_path = 'presentation_material/sippo/'
 
 try:
     os.mkdir(save_path)
@@ -73,9 +58,6 @@ sigma_path = elast_path
 
 taxed_countries_list = [None]
 taxing_countries_list = [None]
-# taxing_countries_list = [baseline.country_list]
-# taxing_countries_list = [EU+['USA','CHN']]
-# taxing_countries_list = [None]
 taxed_sectors_list = [None]
 specific_taxing_list = [None]
 fair_tax_list = [False]
@@ -250,8 +232,21 @@ term_labels = {
     'term_1':'Scale',
     'term_2':'Composition sectors',
     'term_3':'Composition countries'
-    # 'em_reduc':l_em_reduc
           }
+
+#%% Share of transport as emissions
+
+df = b.iot.groupby(['row_sector','col_sector']).sum().reset_index()
+
+df_merged = df.groupby('col_sector')[['value']].sum()
+df_merged['transport'] = df.loc[df.row_sector.isin(['49','50','51'])
+                                ].groupby('col_sector')['value'].sum()
+df_merged['share'] = df_merged['transport'] / df_merged['value']
+
+fig, ax = plt.subplots(figsize=(16,12))
+
+ax.bar(df_merged['share'])
+
 
 #%% Plot macro effects
 

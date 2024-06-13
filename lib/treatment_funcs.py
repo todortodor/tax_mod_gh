@@ -14,6 +14,7 @@ import sys
 from copy import deepcopy
 import itertools
 from tqdm import tqdm
+from ast import literal_eval
 
 def dir_path(results_path,year,dir_num):
     if isinstance(year,int):
@@ -26,27 +27,57 @@ class sol:
         self.res = pd.read_csv(results_path+run.path)
         self.results_path = results_path
         
-        if self.run.fair_tax:
+        if self.run.fair_tax or self.run.pol_pay_tax:
             self.contrib = pd.read_csv(results_path+run.path[:-4]+'_contrib.csv',index_col=0)
         else:
             self.contrib = None
 
+        try:
+            taxed_countries = literal_eval(run.taxed_countries)
+        except:
+            taxed_countries = run.taxed_countries
+        try:
+            taxing_countries = literal_eval(run.taxing_countries)
+        except:
+            taxing_countries = run.taxing_countries
+        try:
+            taxed_sectors = literal_eval(run.taxed_sectors)
+        except:
+            taxed_sectors = run.taxed_sectors
+        try:
+            tax_scheme = run.tax_scheme
+        except:
+            tax_scheme = 'consumer'
+        try:
+            tau_factor = run.tau_factor
+        except:
+            tau_factor = 1
+        
         if 'specific' in run.tax_type:
             self.params = d.params(data_path,
                                    eta_path =run.eta_path,
                                    sigma_path = run.sigma_path,
                                    specific_taxing = pd.read_csv(self.run.path_tax_scheme, 
                                                                  index_col=['row_country','row_sector','col_country']),
-                                   fair_tax = run.fair_tax)
-            
+                                   fair_tax = run.fair_tax,
+                                   pol_pay_tax = run.pol_pay_tax,
+                                   tax_scheme = tax_scheme,
+                                   tau_factor = tau_factor
+                                   )
+        
         if 'specific' not in run.tax_type:
             self.params = d.params(data_path,
                                    eta_path =run.eta_path,
                                    sigma_path = run.sigma_path,
                                    carb_cost = run.carb_cost,
-                                   taxed_countries = run.taxed_countries,
-                                   taxed_sectors = run.taxed_sectors,
-                                   fair_tax = run.fair_tax)
+                                   taxed_countries = taxed_countries,
+                                   taxing_countries = taxing_countries,
+                                   taxed_sectors = taxed_sectors,
+                                   fair_tax = run.fair_tax,
+                                   pol_pay_tax = run.pol_pay_tax,
+                                   tax_scheme = tax_scheme,
+                                   tau_factor = tau_factor
+                                   )
             
     
     def elements(self):
@@ -65,7 +96,7 @@ class sol:
             for key,item in sorted(self.__dict__.items()):
                 print(key, sys.getsizeof(item)/1e6, 'Mb')   
     
-    def compute_solution(self,baseline,inplace=False):
+    def compute_solution(self,baseline,inplace=False,with_np_arrays=False):
         
         if inplace:
             frame = self
@@ -77,14 +108,22 @@ class sol:
         
         E_hat_sol = frame.res.output_hat.values.reshape(b.country_number, b.sector_number)
         p_hat_sol = frame.res.price_hat.values.reshape(b.country_number, b.sector_number)
+        I_hat_sol = frame.res.spending_hat.values.reshape(b.country_number, b.sector_number)[:,0]
         if frame.run.fair_tax:
+            b.deficit_np = b.deficit_np + frame.contrib.value.values
+        if frame.run.pol_pay_tax:
             b.deficit_np = b.deficit_np + frame.contrib.value.values
             
         iot_hat_unit = s.iot_eq_unit(p_hat_sol, p, b) 
         cons_hat_unit = s.cons_eq_unit(p_hat_sol, p, b)       
         beta = np.einsum('itj->tj',b.cons_np) / np.einsum('itj->j',b.cons_np)
 
-        taxed_price = p_hat_sol[:,:,None]*(1+p.carb_cost_np*b.co2_intensity_np[:,:,None])
+        taxed_price = p_hat_sol[:,:,None]*p.tau_hat*(1+p.carb_cost_np*b.co2_intensity_np[:,:,None])
+        if p.tax_scheme == 'eu_style':
+            taxed_price = np.einsum('it,itj,itj->itj',
+                                    p_hat_sol,
+                                    p.tau_hat,
+                                    (1+np.maximum(p.carb_cost_np,np.einsum('itj->jti',p.carb_cost_np))*b.co2_intensity_np[:,:,None]))
         consumer_price_agg = np.einsum('itj,itj->tj'
                                   ,taxed_price**(1-p.sigma[None,:,None]) 
                                   ,b.share_cons_o_np 
@@ -98,7 +137,7 @@ class sol:
                         out = np.ones_like(price_agg_no_pow), 
                         where = price_agg_no_pow!=0 ) ** (1/(p.eta[:,None,None] - 1))  
         
-        I_hat_sol = s.compute_I_hat(p_hat_sol, E_hat_sol, p, b)
+        # I_hat_sol = s.compute_I_hat(p_hat_sol, E_hat_sol, p, b)
         
         iot = np.einsum('it,js,itjs,itjs -> itjs', p_hat_sol, E_hat_sol , iot_hat_unit , b.iot_np)
         cons = np.einsum('it,j,itj,itj -> itj', p_hat_sol, I_hat_sol , cons_hat_unit , b.cons_np)
@@ -111,6 +150,11 @@ class sol:
                                         cons_hat_sol**((p.sigma[None,:,None]-1)/p.sigma[None,:,None]) , 
                                         b.share_cons_o_np ) ** (p.sigma[:,None] / (p.sigma[:,None]-1))
         utility = (utility_cs_hat_sol**beta).prod(axis=0)
+        
+        if with_np_arrays:
+            frame.iot_np = iot
+            frame.cons_np = cons
+            frame.trade_np = iot.sum(axis=-1)+cons
         
         frame.iot = pd.DataFrame(index = b.iot.index,
                                     data = iot.ravel(),
@@ -162,6 +206,29 @@ class sol:
         
         return frame
     
+    def compute_trade_only(self,baseline):
+
+        p = self.params
+        b = baseline.make_np_arrays().compute_shares_and_gammas()
+        
+        E_hat_sol = self.res.output_hat.values.reshape(b.country_number, b.sector_number)
+        p_hat_sol = self.res.price_hat.values.reshape(b.country_number, b.sector_number)
+        I_hat_sol = self.res.spending_hat.values.reshape(b.country_number, b.sector_number)[:,0]
+        if self.run.fair_tax:
+            b.deficit_np = b.deficit_np + self.contrib.value.values
+        if self.run.pol_pay_tax:
+            b.deficit_np = b.deficit_np + self.contrib.value.values
+            
+        iot_hat_unit = s.iot_eq_unit(p_hat_sol, p, b) 
+        cons_hat_unit = s.cons_eq_unit(p_hat_sol, p, b)       
+        
+        # I_hat_sol = s.compute_I_hat(p_hat_sol, E_hat_sol, p, b)
+        
+        iot = np.einsum('it,itj,js,itjs,itjs -> itjs', p_hat_sol, p.tau_hat, E_hat_sol , iot_hat_unit , b.iot_np)
+        cons = np.einsum('it,itj,j,itj,itj -> itj', p_hat_sol, p.tau_hat, I_hat_sol , cons_hat_unit , b.cons_np)
+        
+        return iot.sum(axis=-1) + cons
+    
     def compute_hat(self,baseline,inplace=False):
         
         if inplace:
@@ -188,7 +255,8 @@ class sol:
                   compute_hats = False,
                   return_not_found_cases=False,
                   drop_duplicate_runs = False,
-                  keep = 'last'):
+                  keep = 'last',
+                  exclude_direct_emissions=False):
 
         if isinstance(dir_num,int):
             dir_num = [dir_num]
@@ -206,7 +274,7 @@ class sol:
         if baselines is None:
             baselines = {}
             for y in years:
-                baselines[int(y)] = d.baseline(y,data_path)
+                baselines[int(y)] = d.baseline(y,data_path,exclude_direct_emissions)
         
         sols = []
         for idx,run in relevant_runs.iterrows():
@@ -234,11 +302,21 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
     for i,y in enumerate(years):
         if isinstance(y,int):
             years[i] = str(y)
-        
+    
+    temp_dfs = [pd.read_csv(dir_path(results_path,y,d_num)+'/runs.csv' ,
+                 index_col=0)
+     for y,d_num in itertools.product(years,dir_num)]    
+    
+    for temp_df in temp_dfs:
+        if 'pol_pay_tax' not in temp_df.columns:
+            temp_df['pol_pay_tax'] = False
+        if 'tax_scheme' not in temp_df.columns:
+            temp_df['tax_scheme'] = 'consumer'
+        if 'tau_factor' not in temp_df.columns:
+            temp_df['tau_factor'] = 1
+    
     runs = pd.concat(
-        [pd.read_csv(dir_path(results_path,y,d_num)+'/runs.csv' ,
-                     index_col=0)
-         for y,d_num in itertools.product(years,dir_num)]
+        temp_dfs
         )
     
     not_found_cases = []
@@ -257,7 +335,8 @@ def find_runs(cases,results_path,dir_num,years,drop_duplicate_runs = False,keep 
     
     if drop_duplicate_runs:
         relevant_runs.drop_duplicates(['year', 'carb_cost', 'tax_type', 'taxed_countries','taxing_countries', 
-                                       'taxed_sectors','fair_tax', 'sigma_path', 'eta_path', 'path_tax_scheme'],
+                                       'taxed_sectors','fair_tax', 'pol_pay_tax', 'tax_scheme', 'sigma_path', 
+                                       'eta_path', 'path_tax_scheme'],
                                       inplace=True,
                                       keep = keep)
     
@@ -293,12 +372,18 @@ def look_for_cas_in_runs(cas,runs,results_path):
         
         condition5 = (runs['fair_tax'] == cas['fair_tax'])
         
+        condition8 = (runs['pol_pay_tax'] == cas['pol_pay_tax'])
+        
+        condition9 = (runs['tax_scheme'] == cas['tax_scheme'])
+        
+        condition10 = (runs['tau_factor'] == cas['tau_factor'])
+        
         condition6 = (runs['eta_path'] == cas['eta_path'])
         
         condition7 = (runs['sigma_path'] == cas['sigma_path'])
         
         # condition = condition1 & condition2 & condition3 & condition4 & condition5 & condition6 & condition7
-        condition = condition1 * condition2 * condition3 * condition4 * condition5 * condition6 * condition7
+        condition = condition1 * condition2 * condition3 * condition4 * condition5 * condition6 * condition7 * condition8 * condition9 * condition10
         
     if cas['specific_taxing'] is not None:
         condition1 = pd.Series([False]*len(runs), index = runs.index)

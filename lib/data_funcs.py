@@ -38,6 +38,13 @@ def countries_from_fta(fta = None, return_dict = False):
      'EU':['AUT', 'BEL', 'BGR','CYP', 'CZE', 'DEU','DNK', 'ESP', 'EST', 'FIN',
            'FRA','GRC','HUN','IRL','ITA','LTU','LVA','MLT','NLD',
            'POL','PRT','ROU','SVK','SVN','SWE'],
+     'EU_ETS':['AUT', 'BEL', 'BGR', 'CHE', 'CYP', 
+                'CZE', 'DEU', 'DNK', 'ESP', 'EST', 
+                'FIN', 'FRA', 'GRC', 'HRV', 'HUN', 
+                'IRL', 'ISL', 'ITA', 'LTU', 'LVA', 
+                'MLT', 'NLD', 'NOR', 'POL', 'PRT', 
+                'ROU', 'SVK', 'SVN', 'SWE'
+                ],
      'NAFTA':['CAN','MEX','USA'],
      'ASEAN':['BRN', 'IDN', 'KHM', 'LAO', 'MMR', 'PHL', 'SGP', 'THA', 'VNM'],
      'AANZFTA':['AUS', 'BRN', 'IDN', 'KHM', 'LAO', 'MMR', 'NZL', 'PHL', 'SGP', 'THA', 'VNM'],
@@ -46,6 +53,10 @@ def countries_from_fta(fta = None, return_dict = False):
             'FRA','GRC','HRV','HUN','IRL','ISL','ITA','LTU','LVA','MLT','NLD',
             'NOR','POL','PRT','ROU','SVK','SVN','SWE'],
      'MERCOSUR':['ARG','BRA','CHL','COL','PER']}
+    fta_dict['G20'] = fta_dict['EU'] + [c for c in ['ARG','AUS','BRA','CAN','CHN', 
+             'FRA','DEU','IND','IDN','ITA','JPN','MEX','RUS','SAU','ZAF','KOR',  
+             'TUR','GBR','USA'] if c not in fta_dict['EU']]
+    
     if fta is None:
         if not return_dict:
             for key,item in fta_dict.items():
@@ -80,7 +91,7 @@ def fta_from_countries(countries):
         return sorted(out_ftas)+sorted(list(out_countries))
 
 class baseline:
-    def __init__(self,year,data_path):
+    def __init__(self,year,data_path,exclude_direct_emissions=False):
         year = str(year)
         print('Loading baseline data '+year)
         self.path = data_path+'yearly_CSV_agg_treated/datas'+year
@@ -93,11 +104,22 @@ class baseline:
                               ,index_col = ['row_country','row_sector'])
         va = pd.read_csv (self.path+'/VA_'+year+'.csv'
                           ,index_col = ['col_country','col_sector'])
-        co2_intensity = pd.read_csv(self.path+'/co2_intensity_prod_with_agri_ind_proc_fug_'+year+'.csv'
-                                    ,index_col = ['country','sector'])
-        co2_prod = pd.read_csv(self.path+'/prod_CO2_with_agri_agri_ind_proc_fug_'+year+'.csv'
-                               ,index_col = ['country','sector'])
+        if not exclude_direct_emissions:
+            co2_intensity = pd.read_csv(self.path+'/co2_intensity_prod_with_agri_ind_proc_fug_'+year+'.csv'
+                                        ,index_col = ['country','sector'])
+            co2_prod = pd.read_csv(self.path+'/prod_CO2_with_agri_agri_ind_proc_fug_'+year+'.csv'
+                                   ,index_col = ['country','sector'])
+        else:
+            co2_intensity = pd.read_csv(self.path+'/co2_intensity_prod_'+year+'.csv'
+                                        ,index_col = ['country','sector'])
+            co2_prod = pd.read_csv(self.path+'/prod_CO2_'+year+'.csv'
+                                   ,index_col = ['country','sector'])
         labor = pd.read_csv(data_path+'/World bank/labor_force/labor.csv')
+        
+        cumul_emissions_share = pd.read_csv(data_path+'share_of_cumulative_co2_treated.csv',
+                                            index_col = [0,1]
+                                            ).loc[int(year)]
+        
         self.sector_list = get_sector_list()
         self.sector_number = len(self.sector_list)
         self.country_list = get_country_list()
@@ -109,6 +131,7 @@ class baseline:
         self.co2_intensity = co2_intensity
         self.co2_prod = co2_prod
         self.labor = labor
+        self.cumul_emissions_share = cumul_emissions_share
         self.deficit = pd.DataFrame(self.cons.groupby(level=2)['value'].sum()
             - self.va.groupby(level=0)['value'].sum())
         
@@ -149,10 +172,16 @@ class baseline:
         
         if frame.num_scaled == False:
             if numeraire_type == 'output':
-                num = frame.output.loc[numeraire_country].value.sum()
+                if numeraire_country == 'WLD':
+                    num = frame.output.value.sum()
+                else:
+                    num = frame.output.loc[numeraire_country].value.sum()
             if numeraire_type == 'wage':
-                num = frame.va.loc[numeraire_country].value.sum() \
-                    / frame.labor.loc[frame.labor.country == numeraire_country, frame.year].to_numpy()[0]
+                if numeraire_country == 'WLD':
+                    num = frame.va.value.sum()
+                else:
+                    num = frame.va.loc[numeraire_country].value.sum() \
+                        / frame.labor.loc[frame.labor.country == numeraire_country, frame.year].to_numpy()[0]
             
             frame.cons.value = frame.cons.value / num
             frame.iot.value = frame.iot.value / num
@@ -209,6 +238,7 @@ class baseline:
         frame.co2_prod_np = frame.co2_prod.value.values.reshape(C,S)
         frame.va_np = frame.va.value.values.reshape(C,S)
         frame.deficit_np = frame.deficit.value.values
+        frame.cumul_emissions_share_np = frame.cumul_emissions_share.value.values
         
         return frame
         
@@ -227,7 +257,7 @@ class baseline:
         frame.va_share_np = frame.va_np / frame.va_np.sum(axis=1)[:,None]   
         
         return frame
- 
+
 class params:
     """ Builds parameters and taxation scheme
     
@@ -257,7 +287,10 @@ class params:
                  taxing_countries = None, 
                  taxed_sectors = None,
                  specific_taxing = None,
-                 fair_tax = False):
+                 fair_tax = False,
+                 pol_pay_tax = False,
+                 tax_scheme = 'consumer',
+                 tau_factor=1):
         
         self.eta_path = eta_path
         eta_df = pd.read_csv(data_path+'elasticities/'+eta_path,index_col=0)
@@ -278,7 +311,12 @@ class params:
         self.taxing_countries = taxing_countries
         self.specific_taxing = specific_taxing
         self.fair_tax = fair_tax
+        self.pol_pay_tax = pol_pay_tax
+        self.tax_scheme = tax_scheme
         self.carb_cost = carb_cost
+        self.tau_factor = tau_factor
+        self.tau_hat = np.ones((self.country_number,self.sector_number,self.country_number))*tau_factor
+        np.einsum('iti->it',self.tau_hat)[:] = 1
         
         if specific_taxing is None:
             self.carb_cost_df = pd.DataFrame(
@@ -341,20 +379,25 @@ class params:
                 [self.country_list,
                 self.sector_list,
                 self.country_list]) ), "Incorrect taxing input, index isn't correct"
-            
+            # print(self.carb_cost_df)
             assert len(self.carb_cost_df.columns) == 1, "Incorrect taxing input, wrong nbr of columns"
             self.carb_cost_df.columns = ['value']
             tax_type = 'specific'
             
         if fair_tax:
             tax_type = tax_type+'_fair'
+            
+        if pol_pay_tax:
+            tax_type = tax_type+'_pol_pay'
 
         self.carb_cost_np = self.carb_cost_df.value.values.reshape(self.country_number,
                                                                    self.sector_number,
                                                                    self.country_number)
         self.num_scaled = False
         self.tax_type = tax_type
-    
+        
+        # print('here')
+        
     def copy(self):
         frame = deepcopy(self)
         return frame
@@ -407,9 +450,38 @@ class params:
         else:
             print('Carbon tax was not scaled by numeraire, did nothing')
     
+    def update_carb_cost(self, carb_price):
+        self.carb_cost = None
+        self.taxed_countries = None
+        self.taxing_countries = None
+        self.taxed_sectors = None
+        self.carb_cost_df = pd.DataFrame(index = pd.MultiIndex.from_product([get_country_list(),
+                                                                    get_sector_list(),
+                                                                    get_country_list()],
+                                                                    names = ['row_country',
+                                                                            'row_sector',
+                                                                            'col_country'])).reset_index()
+        self.carb_cost_df = pd.merge(self.carb_cost_df,pd.DataFrame(index=pd.Index(get_country_list(),name='col_country'),
+                                                                    columns=['value'],
+                                                                    data=carb_price),
+                                     on='col_country').set_index(['row_country',
+                                             'row_sector',
+                                             'col_country'])
+        self.carb_cost_df.sort_index(inplace = True)
+
+        assert np.all( self.carb_cost_df.index == pd.MultiIndex.from_product(
+            [self.country_list,
+            self.sector_list,
+            self.country_list]) ), "Incorrect taxing input, index isn't correct"
+        
+        self.carb_cost_np = self.carb_cost_df.value.values.reshape(self.country_number,
+                                                                   self.sector_number,
+                                                                   self.country_number)
+        self.tax_type = 'specific'
 
 def build_cases(eta_path_list,sigma_path_list,carb_cost_list,taxed_countries_list, taxing_countries_list,
-                taxed_sectors_list, specific_taxing_list,fair_tax_list):
+                taxed_sectors_list, specific_taxing_list,fair_tax_list,pol_pay_tax_list,tax_scheme_list,
+                tau_factor_list,same_elasticities=False):
         
     cases = []
     taxed_countries_list = [sorted(t) if t is not None else None for t in taxed_countries_list]
@@ -420,20 +492,46 @@ def build_cases(eta_path_list,sigma_path_list,carb_cost_list,taxed_countries_lis
     if isinstance(sigma_path_list,str):
         sigma_path_list = [sigma_path_list]
     
-    for eta_path,sigma_path,carb_cost,taxed_countries,taxing_countries,taxed_sectors,specific_taxing,fair_tax \
-        in itertools.product(eta_path_list,sigma_path_list,carb_cost_list,taxed_countries_list,taxing_countries_list,
-                             taxed_sectors_list,specific_taxing_list,fair_tax_list): 
-            assert carb_cost is None or specific_taxing is None, 'carb_cost and specific taxing are mutually exclusive parameters'
-            assert carb_cost is not None or specific_taxing is not None, 'carb_cost or specific taxing need to be specified'
-            
-            cases.append({'eta_path':eta_path,
-                      'sigma_path':sigma_path,
-                      'carb_cost':carb_cost,
-                      'taxed_countries': taxed_countries,
-                      'taxing_countries': taxing_countries,
-                      'taxed_sectors':taxed_sectors,
-                      'specific_taxing':specific_taxing,
-                      'fair_tax':fair_tax})
+    if not same_elasticities:
+        for eta_path,sigma_path,carb_cost,taxed_countries,taxing_countries,taxed_sectors,specific_taxing,fair_tax,pol_pay_tax,tax_scheme,tau_factor \
+            in itertools.product(eta_path_list,sigma_path_list,carb_cost_list,taxed_countries_list,taxing_countries_list,
+                                 taxed_sectors_list,specific_taxing_list,fair_tax_list,pol_pay_tax_list,tax_scheme_list,tau_factor_list): 
+                assert carb_cost is None or specific_taxing is None, 'carb_cost and specific taxing are mutually exclusive parameters'
+                assert carb_cost is not None or specific_taxing is not None, 'carb_cost or specific taxing need to be specified'
+                
+                cases.append({'eta_path':eta_path,
+                          'sigma_path':sigma_path,
+                          'carb_cost':carb_cost,
+                          'taxed_countries': taxed_countries,
+                          'taxing_countries': taxing_countries,
+                          'taxed_sectors':taxed_sectors,
+                          'specific_taxing':specific_taxing,
+                          'fair_tax':fair_tax,
+                          'pol_pay_tax':pol_pay_tax,
+                          'tax_scheme':tax_scheme,
+                          'tau_factor':tau_factor,
+                          })
+    
+    if same_elasticities:
+        for eta_path,carb_cost,taxed_countries,taxing_countries,taxed_sectors,specific_taxing,fair_tax,pol_pay_tax,tax_scheme,tau_factor \
+            in itertools.product(eta_path_list,carb_cost_list,taxed_countries_list,taxing_countries_list,
+                                 taxed_sectors_list,specific_taxing_list,fair_tax_list,pol_pay_tax_list,tax_scheme_list,tau_factor_list): 
+                assert carb_cost is None or specific_taxing is None, 'carb_cost and specific taxing are mutually exclusive parameters'
+                assert carb_cost is not None or specific_taxing is not None, 'carb_cost or specific taxing need to be specified'
+                
+                cases.append({'eta_path':eta_path,
+                          'sigma_path':eta_path,
+                          'carb_cost':carb_cost,
+                          'taxed_countries': taxed_countries,
+                          'taxing_countries': taxing_countries,
+                          'taxed_sectors':taxed_sectors,
+                          'specific_taxing':specific_taxing,
+                          'fair_tax':fair_tax,
+                          'pol_pay_tax':pol_pay_tax,
+                          'tax_scheme':tax_scheme,
+                          'tau_factor':tau_factor,
+                          })
+    
     return cases
             
 def write_solution_csv(results,
@@ -442,12 +540,14 @@ def write_solution_csv(results,
                        emissions_sol, 
                        utility,
                        params, 
-                       baseline):
+                       baseline,
+                       autarky):
     p = params
     b = baseline    
     
     E_hat_sol = results['E_hat']
     p_hat_sol = results['p_hat']
+    I_hat_sol = results['I_hat']
     
     path = results_path+b.year+'_'+str(dir_num)
     Path(path).mkdir(parents=True, exist_ok=True)
@@ -462,6 +562,9 @@ def write_solution_csv(results,
                                         'taxing_countries',
                                         'taxed_sectors',
                                         'fair_tax',
+                                        'pol_pay_tax',
+                                        'tax_scheme',
+                                        'tau_factor',
                                         'sigma_path',
                                         'eta_path',
                                         'path',
@@ -495,13 +598,33 @@ def write_solution_csv(results,
                                           data = results['contrib']*b.num)
         contrib_data_frame.to_csv(results_path+run_path[:-4]+'_contrib.csv')
     
+    if p.pol_pay_tax:
+        contrib_data_frame = pd.DataFrame(index = pd.Index(b.country_list, name='country') , 
+                                          columns = ['value'], 
+                                          data = results['contrib']*b.num)
+        contrib_data_frame.to_csv(results_path+run_path[:-4]+'_contrib.csv')
+    
+    if not autarky:
+        carb_cost = p.num_scale_back_carb_cost().carb_cost
+    if autarky:
+        carb_cost = p.carb_cost
+        b.num = 0
+        b.num_type = 'autarky'
+        b.num_country = 'autarky'
+    if b.num_type == 'no_scaling':
+        b.num_country = 'none'
+        
+    
     run = pd.DataFrame(data = [b.year,
-                    p.num_scale_back_carb_cost().carb_cost,
+                    carb_cost,
                     p.tax_type,
                     p.taxed_countries,
                     p.taxing_countries,
                     p.taxed_sectors,
                     p.fair_tax,
+                    p.pol_pay_tax,
+                    p.tax_scheme,
+                    p.tau_factor,
                     p.sigma_path,
                     p.eta_path,
                     run_path,
@@ -520,6 +643,8 @@ def write_solution_csv(results,
                                       columns = ['output_hat','price_hat'])
     results_data_frame['output_hat'] = E_hat_sol.ravel()
     results_data_frame['price_hat'] = p_hat_sol.ravel()
+    results_data_frame['spending_hat'] = np.repeat(I_hat_sol[:, np.newaxis], 
+                                                   p.sector_number, axis=1).ravel()
     results_data_frame.to_csv(results_path+run_path)
     
     

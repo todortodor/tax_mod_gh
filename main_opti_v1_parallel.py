@@ -113,10 +113,10 @@ baseline.compute_shares_and_gammas(inplace = True)
 
 # run(baseline, data_path,results_path,dir_num, cases)
 
-# p = Pool()
+p = Pool()
 # data = [(baseline, data_path, results_path, dir_num, simulation_case) for simulation_case in cases]
-# manager = Manager()
-# data = manager.list([(baseline, data_path, results_path, dir_num, simulation_case) for simulation_case in cases])
+manager = Manager()
+data = manager.list([(baseline, data_path, results_path, dir_num, simulation_case) for simulation_case in cases])
 # start = time.time()
 # for dat in p.map_async(one_run, data).get():
 #     print("{} (Time elapsed: {}s)".format(dat, int(time.time() - start)),flush=True)

@@ -109,8 +109,8 @@ ax.tick_params(axis='both', labelsize=20 )
 plt.tight_layout()
 
 
-if save or save_all:
-    plt.savefig(save_path+'data_em_by_sector.pdf',format='pdf')
+# if save or save_all:
+#     plt.savefig(save_path+'data_em_by_sector.pdf',format='pdf')
 
 plt.show()
 

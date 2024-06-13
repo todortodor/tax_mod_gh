@@ -21,8 +21,16 @@ import matplotlib.pyplot as plt
 results_path = main_path+'results/'
 data_path = main_path+'data/'
 # dir_num = [1,2,3,4] can be a list to look in multiple directories
-dir_num = 200
+dir_num = 52
 year = 2018
+
+EEA = d.countries_from_fta('EEA')
+EU = d.countries_from_fta('EU')
+NAFTA = d.countries_from_fta('NAFTA')
+ASEAN = d.countries_from_fta('ASEAN')
+AANZFTA = d.countries_from_fta('AANZFTA')
+APTA = d.countries_from_fta('APTA')
+MERCOSUR = d.countries_from_fta('MERCOSUR')
 
 # test = pd.read_csv(t.dir_path(results_path,year,dir_num)+'/runs.csv', 
 #                     index_col = 0)
@@ -37,12 +45,12 @@ year = 2018
 
 # tax_test_1 = pd.read_csv(results_path+'test1.csv',index_col = [0,1])
 
-carb_cost_list = np.linspace(0,1e-4,11)
-# carb_cost_list = [None]
-eta_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
-sigma_path = ['elasticities_agg1.csv','elasticities_agg2.csv','uniform_elasticities_4.csv']
-# eta_path = ['elasticities_agg1.csv']
+# carb_cost_list = np.linspace(0,1e-4,11)
+carb_cost_list = [1e-4]
+# eta_path = ['uniform_elasticities_4.csv']
 # sigma_path = ['uniform_elasticities_4.csv']
+eta_path = ['cp_estimate_allyears.csv']
+sigma_path = ['cp_estimate_allyears.csv']
 # carb_cost_list = [4.6e-4]
 taxed_countries_list = [None]
 # taxing_countries_list = [None,EU,NAFTA,ASEAN,AANZFTA,APTA,EEA,MERCOSUR,
@@ -50,7 +58,9 @@ taxed_countries_list = [None]
 #                           EEA+NAFTA,EEA+ASEAN,EEA+APTA,EEA+AANZFTA,EEA+['USA'],EEA+['CHN'],
 #                           NAFTA+APTA,NAFTA+MERCOSUR,
 #                           APTA+AANZFTA,EU+NAFTA+['CHN'],EU+NAFTA+APTA]
-taxing_countries_list = [None]
+# taxing_countries_list = [None]
+# taxing_countries_list = [None]
+taxing_countries_list = [EU,EU+['USA'],EU+['USA','CHN'],d.get_country_list()]
 taxed_sectors_list = [None]
 specific_taxing_list = [None]
 # spec_tax = pd.DataFrame(index = pd.MultiIndex.from_product([d.get_country_list(),
@@ -64,9 +74,13 @@ specific_taxing_list = [None]
 # spec_tax.loc[:,'94T98',:] = 0.5e-4
 # specific_taxing_list = [spec_tax]
 fair_tax_list = [False]
+pol_pay_tax_list = [False]
+tax_scheme_list = ['consumer']
+tau_factor_list = [1]
 
 cases = d.build_cases(eta_path,sigma_path,carb_cost_list,taxed_countries_list,taxing_countries_list,
-                      taxed_sectors_list,specific_taxing_list,fair_tax_list)
+                      taxed_sectors_list,specific_taxing_list,fair_tax_list,pol_pay_tax_list,tax_scheme_list,
+                      tau_factor_list)
 
 years = [2018]
 
@@ -81,6 +95,21 @@ sols, baselines, relevant_runs, found_cases, not_found_cases = t.sol.load_sols(c
                                                       return_not_found_cases=True,
                                                       drop_duplicate_runs=True,
                                                       keep='last')
+
+#%%
+
+path_names = ['EU','EU_US','EU_US_CHN','ALL']
+
+for i, sol in enumerate(sols):
+    # trade = sol.iot.groupby(['row_country','row_sector','col_country']).sum() + sol.cons
+    # trade.to_csv('for_dora_9_1_24/'+path_names[i]+'.csv')
+    # print(i,trade.sum())
+    print(i,len(sol.run.taxing_countries)/7)
+
+# trade = baselines[2018].iot.groupby(['row_country','row_sector','col_country']).sum()  + baselines[2018].cons
+# trade.to_csv('for_dora_9_1_24/baseline.csv')
+# print(trade.sum())
+# print(trade.sum())
 
 #%%
 
