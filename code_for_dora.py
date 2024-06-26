@@ -6,45 +6,35 @@ Created on Thu Jun 13 16:04:22 2024
 @author: slepot
 """
 
-main_path = './'
-import sys
-sys.path.append(main_path+'lib/')
-import solver_funcs as s
-import data_funcs as d
+import funcs_for_dora as f
+import pandas as pd
 
-# spec_tax = pd.DataFrame(index = pd.MultiIndex.from_product([d.get_country_list(),
-#                                                             d.get_sector_list(),
-#                                                             d.get_country_list()],
-#                                                             names = ['row_country',
-#                                                                     'row_sector',
-#                                                                     'col_country']),
-#                         columns = ['value'])
-# spec_tax['value'] = 0
+tax_matrix = pd.DataFrame(index = pd.MultiIndex.from_product([f.get_country_list(),
+                                                            f.get_sector_list(),
+                                                            f.get_country_list()],
+                                                            names = ['row_country',
+                                                                    'row_sector',
+                                                                    'col_country']),
+                        columns = ['value'])
+tax_matrix['value'] = 0.0
 
-par = d.params(data_path='./data/',
+tax_matrix.loc['USA',:,:] = 0.1
+tax_matrix.loc['USA',:,'USA'] = 0
+tax_matrix.loc[:,:,'NOR'] = 0.2
+tax_matrix.loc[:,'01T02',:] = 0.3
+tax_matrix.loc['BRA','01T02','CHN'] = 1.1
+
+#%%
+
+par = f.params(data_path='./data/',
              eta_path="cp_estimate_allyears.csv", 
              sigma_path="cp_estimate_allyears.csv",
-             carb_cost = 1e-4, #in Mio$ per ton of CO2, so this is 100$  
-             taxed_countries = None, 
-             taxing_countries = None, 
-             taxed_sectors = None,
-             specific_taxing = None,
-             fair_tax = False,
-             pol_pay_tax = False,
-             tax_scheme = 'consumer',
-             tau_factor=1
+             tax_matrix=tax_matrix
              )
 
-baseline = d.baseline(year=2018,
+baseline = f.baseline(year=2018,
                       data_path='./data/',
                       exclude_direct_emissions=False)
-
-baseline.num_scale(numeraire_type='wage', 
-                   numeraire_country='WLD', 
-                   inplace = True)
-
-par.num_scale_carb_cost(baseline.num, 
-                        inplace = True)
 
 baseline.make_np_arrays(inplace = True)
 
@@ -52,9 +42,9 @@ baseline.compute_shares_and_gammas(inplace = True)
 
 #%%
 
-import solver_funcs as s
+import funcs_for_dora as f
 
-results = s.solve_one_loop(
+results = f.solve_one_loop(
                     params=par, 
                     baseline=baseline, 
                     vec_init = None, 
@@ -63,39 +53,38 @@ results = s.solve_one_loop(
 
 #%%
 
-print(results)
-emissions_sol, utility, utility_countries = s.compute_emissions_utility(results, par, baseline, autarky=False)
+import funcs_for_dora as f
 
-d.write_solution_csv(results,
-                     './results/',
-                     1000,
-                     emissions_sol,
-                     utility,
-                     par,
-                     baseline,
-                     autarky=False)
-
-#%%
-import pandas as pd
-import treatment_funcs as t
-
-runs_path = 'results/2018_1000/runs.csv'
-    
-runs = pd.read_csv(runs_path,index_col=0)
-sols = t.sol(runs.iloc[0],results_path='./results/',data_path='./data/')
-
+f.write_solution_csv(results=results,
+                     results_path='./results_dora/',
+                     run_name ='the_first_test',
+                     params = par)
 
 #%%
 
-# function to modify to make a "non-carbon" tax :
+import funcs_for_dora as f
 
-# In solver_funcs.py :
+sol = f.sol(results_path='results_dora/the_first_test_results.csv', 
+            tax_matrix_path='results_dora/the_first_test_tax_matrix.csv', 
+            baseline=baseline, 
+            data_path='data/',
+            eta_path="cp_estimate_allyears.csv", 
+            sigma_path="cp_estimate_allyears.csv")
 
-#     cons_eq_unit
-#     iot_eq_unit
-#     solve_one_loop
-    
-# In data_funcs.py :
-    
+sol.compute_solution(baseline)
+
+#%%
+
+import funcs_for_dora as f
+import matplotlib.pyplot as plt
+
+fig,ax = plt.subplots()
+
+sectors = f.get_sector_list()
+y = sol.labor_hat.loc['NOR',:]
+
+ax.bar(sectors,y.value*100-100)
+
+plt.show()
 
 
